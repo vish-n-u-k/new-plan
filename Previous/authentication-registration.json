@@ -1,0 +1,552 @@
+{
+  "module_name": "Authentication & Registration",
+  "module_description": "Handles user signup, login, password reset, and session management for both buyers and seller. This is the foundational module — all other modules depend on it for authentication state and role-based access.",
+  "module_business_logic": "Buyers register with email, password, business name, and phone number. Seller account is pre-created (no self-registration for sellers in v1). Email verification is sent on buyer signup. Login authenticates via email/password and redirects based on role — buyers go to /catalog, sellers go to /dashboard. Sessions persist across browser sessions. Password reset is email-link-based. All routes except /login, /register, and /forgot-password require an active session.",
+  "depends_on_modules": [],
+  "screens": [
+    {
+      "screen_name": "Login Screen",
+      "screen_type": "form",
+      "route": "/login",
+      "file_path": "src/app/login/page.tsx",
+      "page_name": "LoginPage",
+      "auth_required": false,
+      "allowed_roles": [],
+      "components": [
+        {
+          "component_name": "LoginForm",
+          "file_path": "src/client/components/auth/LoginForm.tsx",
+          "type": "form",
+          "props": [
+            {
+              "name": "onSuccess",
+              "type": "(user: { role: Role }) => void",
+              "description": "Callback fired after successful login — receives user data for role-based redirect"
+            }
+          ],
+          "description": "Email and password login form with inline validation errors. Submits credentials to the login endpoint. On success, calls onSuccess with the authenticated user's role so the page can redirect (buyer → /catalog, seller → /dashboard). Includes a link to /register and /forgot-password."
+        },
+        {
+          "component_name": "AuthLayout",
+          "file_path": "src/client/components/auth/AuthLayout.tsx",
+          "type": "layout",
+          "props": [
+            {
+              "name": "title",
+              "type": "string",
+              "description": "Page heading displayed above the form (e.g., 'Welcome Back')"
+            },
+            {
+              "name": "subtitle",
+              "type": "string",
+              "description": "Secondary text below the heading (e.g., 'Sign in to your account')"
+            },
+            {
+              "name": "children",
+              "type": "ReactNode",
+              "description": "The form component to render within the centered layout"
+            }
+          ],
+          "description": "Shared centered layout wrapper used by all auth screens (login, register, forgot password). Provides consistent styling — centered card with logo, title, subtitle, and form slot."
+        }
+      ],
+      "hooks": [
+        {
+          "hook_name": "useLogin",
+          "file_path": "src/client/hooks/useLogin.ts",
+          "consumes_endpoints": ["POST /api/auth/login"],
+          "returns": "{ login: (credentials: LoginInput) => Promise<void>, isLoading: boolean, error: string | null }",
+          "description": "Submits email/password to POST /api/auth/login. On success, stores session (cookie-based via API response) and returns user data. On failure, surfaces the error message for inline display."
+        }
+      ],
+      "validation_schemas": ["loginSchema"],
+      "user_interactions": [
+        "Enter email and password",
+        "Submit login form",
+        "Click 'Create an account' link to navigate to /register",
+        "Click 'Forgot password?' link to navigate to /forgot-password"
+      ],
+      "states": {
+        "loading": "Submit button shows spinner and is disabled while login request is in flight",
+        "empty": "Not applicable — form is always rendered with empty fields on mount",
+        "error": "Inline error message below the form fields (e.g., 'Invalid email or password'). Field-level validation errors shown below each input."
+      }
+    },
+    {
+      "screen_name": "Buyer Registration Screen",
+      "screen_type": "form",
+      "route": "/register",
+      "file_path": "src/app/register/page.tsx",
+      "page_name": "RegisterPage",
+      "auth_required": false,
+      "allowed_roles": [],
+      "components": [
+        {
+          "component_name": "SignupForm",
+          "file_path": "src/client/components/auth/SignupForm.tsx",
+          "type": "form",
+          "props": [
+            {
+              "name": "onSuccess",
+              "type": "() => void",
+              "description": "Callback fired after successful registration — used to navigate to verification prompt"
+            }
+          ],
+          "description": "Buyer registration form with fields: email, password, confirm password, business name, and phone number. Validates all fields client-side with Zod before submitting. On success, calls onSuccess to show the email verification prompt. Includes a link back to /login."
+        },
+        {
+          "component_name": "EmailVerificationPrompt",
+          "file_path": "src/client/components/auth/EmailVerificationPrompt.tsx",
+          "type": "display",
+          "props": [
+            {
+              "name": "email",
+              "type": "string",
+              "description": "The email address the verification was sent to"
+            },
+            {
+              "name": "onResend",
+              "type": "() => void",
+              "description": "Callback to resend the verification email"
+            }
+          ],
+          "description": "Displayed after successful signup. Shows a message instructing the buyer to check their email for a verification link. Includes a 'Resend email' button and a link to /login."
+        },
+        {
+          "component_name": "AuthLayout",
+          "file_path": "src/client/components/auth/AuthLayout.tsx",
+          "type": "layout",
+          "props": [
+            {
+              "name": "title",
+              "type": "string",
+              "description": "Page heading"
+            },
+            {
+              "name": "subtitle",
+              "type": "string",
+              "description": "Secondary text below heading"
+            },
+            {
+              "name": "children",
+              "type": "ReactNode",
+              "description": "Form content"
+            }
+          ],
+          "description": "Shared auth layout — reused from Login Screen"
+        }
+      ],
+      "hooks": [
+        {
+          "hook_name": "useSignup",
+          "file_path": "src/client/hooks/useSignup.ts",
+          "consumes_endpoints": ["POST /api/auth/signup"],
+          "returns": "{ signup: (data: SignupInput) => Promise<void>, isLoading: boolean, error: string | null }",
+          "description": "Submits buyer registration data to POST /api/auth/signup. On success, triggers email verification flow. On failure (e.g., email already exists), surfaces error message."
+        },
+        {
+          "hook_name": "useResendVerification",
+          "file_path": "src/client/hooks/useResendVerification.ts",
+          "consumes_endpoints": ["POST /api/auth/resend-verification"],
+          "returns": "{ resend: (email: string) => Promise<void>, isLoading: boolean, error: string | null }",
+          "description": "Resends the email verification link. Includes rate-limiting feedback (e.g., 'Please wait 60 seconds before retrying')."
+        }
+      ],
+      "validation_schemas": ["signupSchema"],
+      "user_interactions": [
+        "Enter email, password, confirm password, business name, and phone number",
+        "Submit registration form",
+        "Click 'Resend verification email' button after successful registration",
+        "Click 'Already have an account? Log in' link to navigate to /login"
+      ],
+      "states": {
+        "loading": "Submit button shows spinner and is disabled while signup request is in flight",
+        "empty": "Not applicable — form renders with empty fields on mount",
+        "error": "Inline field-level validation errors (e.g., 'Password must be at least 8 characters'). API-level error banner above form (e.g., 'An account with this email already exists')."
+      }
+    },
+    {
+      "screen_name": "Forgot Password Screen",
+      "screen_type": "form",
+      "route": "/forgot-password",
+      "file_path": "src/app/forgot-password/page.tsx",
+      "page_name": "ForgotPasswordPage",
+      "auth_required": false,
+      "allowed_roles": [],
+      "components": [
+        {
+          "component_name": "ForgotPasswordForm",
+          "file_path": "src/client/components/auth/ForgotPasswordForm.tsx",
+          "type": "form",
+          "props": [
+            {
+              "name": "onSuccess",
+              "type": "(email: string) => void",
+              "description": "Callback fired after reset email is sent — used to show confirmation message"
+            }
+          ],
+          "description": "Simple form with a single email field. Submits to the password reset endpoint. On success, calls onSuccess to transition the UI to a confirmation message. Includes a link back to /login."
+        },
+        {
+          "component_name": "ResetEmailSentPrompt",
+          "file_path": "src/client/components/auth/ResetEmailSentPrompt.tsx",
+          "type": "display",
+          "props": [
+            {
+              "name": "email",
+              "type": "string",
+              "description": "The email address the reset link was sent to"
+            }
+          ],
+          "description": "Confirmation message shown after the reset email is sent. Tells the user to check their inbox and includes a link back to /login."
+        },
+        {
+          "component_name": "AuthLayout",
+          "file_path": "src/client/components/auth/AuthLayout.tsx",
+          "type": "layout",
+          "props": [
+            {
+              "name": "title",
+              "type": "string",
+              "description": "Page heading"
+            },
+            {
+              "name": "subtitle",
+              "type": "string",
+              "description": "Secondary text below heading"
+            },
+            {
+              "name": "children",
+              "type": "ReactNode",
+              "description": "Form content"
+            }
+          ],
+          "description": "Shared auth layout — reused from Login Screen"
+        }
+      ],
+      "hooks": [
+        {
+          "hook_name": "useForgotPassword",
+          "file_path": "src/client/hooks/useForgotPassword.ts",
+          "consumes_endpoints": ["POST /api/auth/forgot-password"],
+          "returns": "{ requestReset: (email: string) => Promise<void>, isLoading: boolean, error: string | null }",
+          "description": "Sends a password reset request. The API always returns success (even if the email doesn't exist) to prevent email enumeration. Frontend shows the confirmation message regardless."
+        }
+      ],
+      "validation_schemas": ["forgotPasswordSchema"],
+      "user_interactions": [
+        "Enter email address",
+        "Submit forgot password form",
+        "Click 'Back to login' link to navigate to /login"
+      ],
+      "states": {
+        "loading": "Submit button shows spinner and is disabled while request is in flight",
+        "empty": "Not applicable — form renders with empty email field on mount",
+        "error": "Field-level validation error if email format is invalid. No API error displayed to prevent email enumeration."
+      }
+    },
+    {
+      "screen_name": "Reset Password Screen",
+      "screen_type": "form",
+      "route": "/reset-password/[token]",
+      "file_path": "src/app/reset-password/[token]/page.tsx",
+      "page_name": "ResetPasswordPage",
+      "auth_required": false,
+      "allowed_roles": [],
+      "components": [
+        {
+          "component_name": "ResetPasswordForm",
+          "file_path": "src/client/components/auth/ResetPasswordForm.tsx",
+          "type": "form",
+          "props": [
+            {
+              "name": "token",
+              "type": "string",
+              "description": "The password reset token extracted from the URL"
+            },
+            {
+              "name": "onSuccess",
+              "type": "() => void",
+              "description": "Callback fired after password is successfully reset — navigates to /login"
+            }
+          ],
+          "description": "Form with new password and confirm password fields. Submits the new password along with the URL token to the reset endpoint. On success, shows a confirmation and redirects to /login. If the token is invalid or expired, shows an error with a link to request a new reset."
+        },
+        {
+          "component_name": "AuthLayout",
+          "file_path": "src/client/components/auth/AuthLayout.tsx",
+          "type": "layout",
+          "props": [
+            {
+              "name": "title",
+              "type": "string",
+              "description": "Page heading"
+            },
+            {
+              "name": "subtitle",
+              "type": "string",
+              "description": "Secondary text below heading"
+            },
+            {
+              "name": "children",
+              "type": "ReactNode",
+              "description": "Form content"
+            }
+          ],
+          "description": "Shared auth layout — reused from Login Screen"
+        }
+      ],
+      "hooks": [
+        {
+          "hook_name": "useResetPassword",
+          "file_path": "src/client/hooks/useResetPassword.ts",
+          "consumes_endpoints": ["POST /api/auth/reset-password"],
+          "returns": "{ resetPassword: (token: string, newPassword: string) => Promise<void>, isLoading: boolean, error: string | null }",
+          "description": "Submits the new password with the reset token. On success, confirms the password was changed. On failure (expired/invalid token), surfaces the error."
+        }
+      ],
+      "validation_schemas": ["resetPasswordSchema"],
+      "user_interactions": [
+        "Enter new password and confirm password",
+        "Submit reset password form",
+        "Click 'Request a new link' if token is expired",
+        "Click 'Back to login' link"
+      ],
+      "states": {
+        "loading": "Submit button shows spinner and is disabled while request is in flight",
+        "empty": "Not applicable — form renders with empty password fields on mount",
+        "error": "Field-level validation (password mismatch, minimum length). Token-level error banner ('This link has expired. Request a new password reset.') with link to /forgot-password."
+      }
+    },
+    {
+      "screen_name": "Email Verification Screen",
+      "screen_type": "confirmation",
+      "route": "/verify-email/[token]",
+      "file_path": "src/app/verify-email/[token]/page.tsx",
+      "page_name": "VerifyEmailPage",
+      "auth_required": false,
+      "allowed_roles": [],
+      "components": [
+        {
+          "component_name": "VerificationStatus",
+          "file_path": "src/client/components/auth/VerificationStatus.tsx",
+          "type": "display",
+          "props": [
+            {
+              "name": "status",
+              "type": "'loading' | 'success' | 'error'",
+              "description": "Current verification status"
+            },
+            {
+              "name": "errorMessage",
+              "type": "string | null",
+              "description": "Error message if verification failed"
+            }
+          ],
+          "description": "Displays the result of email verification. On page load, the token is automatically sent to the verification endpoint. Shows a success message with a link to /login, or an error message with a link to resend verification."
+        },
+        {
+          "component_name": "AuthLayout",
+          "file_path": "src/client/components/auth/AuthLayout.tsx",
+          "type": "layout",
+          "props": [
+            {
+              "name": "title",
+              "type": "string",
+              "description": "Page heading"
+            },
+            {
+              "name": "subtitle",
+              "type": "string",
+              "description": "Secondary text below heading"
+            },
+            {
+              "name": "children",
+              "type": "ReactNode",
+              "description": "Content"
+            }
+          ],
+          "description": "Shared auth layout — reused from Login Screen"
+        }
+      ],
+      "hooks": [
+        {
+          "hook_name": "useVerifyEmail",
+          "file_path": "src/client/hooks/useVerifyEmail.ts",
+          "consumes_endpoints": ["POST /api/auth/verify-email"],
+          "returns": "{ status: 'loading' | 'success' | 'error', errorMessage: string | null }",
+          "description": "Automatically sends the verification token to the API on mount. Returns the verification status. On success, the user's email is marked as verified. On failure (expired or invalid token), surfaces the error."
+        }
+      ],
+      "validation_schemas": [],
+      "user_interactions": [
+        "Land on page via email link (automatic verification on mount)",
+        "Click 'Go to login' on success",
+        "Click 'Resend verification email' on failure"
+      ],
+      "states": {
+        "loading": "Centered spinner with 'Verifying your email...' text",
+        "empty": "Not applicable",
+        "error": "Error message with 'This verification link has expired or is invalid' and a resend button"
+      }
+    }
+  ],
+  "validation_schema_definitions": [
+    {
+      "schema_name": "loginSchema",
+      "file_path": "src/schemas/auth.schema.ts",
+      "fields": [
+        {
+          "name": "email",
+          "type": "z.string().email()",
+          "validation": "Required, valid email format"
+        },
+        {
+          "name": "password",
+          "type": "z.string().min(1)",
+          "validation": "Required, non-empty"
+        }
+      ],
+      "inferred_type": "LoginInput"
+    },
+    {
+      "schema_name": "signupSchema",
+      "file_path": "src/schemas/auth.schema.ts",
+      "fields": [
+        {
+          "name": "email",
+          "type": "z.string().email()",
+          "validation": "Required, valid email format"
+        },
+        {
+          "name": "password",
+          "type": "z.string().min(8).max(72)",
+          "validation": "Required, 8-72 characters"
+        },
+        {
+          "name": "confirmPassword",
+          "type": "z.string()",
+          "validation": "Must match password (refined with .refine())"
+        },
+        {
+          "name": "businessName",
+          "type": "z.string().min(1).max(200)",
+          "validation": "Required, 1-200 characters"
+        },
+        {
+          "name": "phone",
+          "type": "z.string().min(10).max(15)",
+          "validation": "Required, 10-15 digit phone number"
+        }
+      ],
+      "inferred_type": "SignupInput"
+    },
+    {
+      "schema_name": "forgotPasswordSchema",
+      "file_path": "src/schemas/auth.schema.ts",
+      "fields": [
+        {
+          "name": "email",
+          "type": "z.string().email()",
+          "validation": "Required, valid email format"
+        }
+      ],
+      "inferred_type": "ForgotPasswordInput"
+    },
+    {
+      "schema_name": "resetPasswordSchema",
+      "file_path": "src/schemas/auth.schema.ts",
+      "fields": [
+        {
+          "name": "token",
+          "type": "z.string().min(1)",
+          "validation": "Required, the reset token from the URL"
+        },
+        {
+          "name": "password",
+          "type": "z.string().min(8).max(72)",
+          "validation": "Required, 8-72 characters"
+        },
+        {
+          "name": "confirmPassword",
+          "type": "z.string()",
+          "validation": "Must match password (refined with .refine())"
+        }
+      ],
+      "inferred_type": "ResetPasswordInput"
+    }
+  ],
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "request_body": "LoginInput",
+      "response": "{ success: true, data: { user: UserResponse, redirectTo: string } }",
+      "error_codes": ["INVALID_CREDENTIALS", "EMAIL_NOT_VERIFIED"],
+      "description": "Authenticates a user with email/password. Sets session cookie. Returns user data and role-based redirect path."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/signup",
+      "request_body": "SignupInput (without confirmPassword — stripped before API call)",
+      "response": "{ success: true, data: { message: string } }",
+      "error_codes": ["EMAIL_ALREADY_EXISTS", "VALIDATION_ERROR"],
+      "description": "Registers a new buyer account. Sends verification email. Does not auto-login."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "request_body": "ForgotPasswordInput",
+      "response": "{ success: true, data: { message: string } }",
+      "error_codes": [],
+      "description": "Initiates password reset. Always returns success to prevent email enumeration."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "request_body": "ResetPasswordInput (without confirmPassword)",
+      "response": "{ success: true, data: { message: string } }",
+      "error_codes": ["INVALID_TOKEN", "TOKEN_EXPIRED"],
+      "description": "Resets password using the token from the email link."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/verify-email",
+      "request_body": "{ token: string }",
+      "response": "{ success: true, data: { message: string } }",
+      "error_codes": ["INVALID_TOKEN", "TOKEN_EXPIRED"],
+      "description": "Verifies a buyer's email using the token from the verification email link."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/resend-verification",
+      "request_body": "{ email: string }",
+      "response": "{ success: true, data: { message: string } }",
+      "error_codes": ["RATE_LIMIT_EXCEEDED", "ALREADY_VERIFIED"],
+      "description": "Resends the email verification link. Rate-limited to 1 request per 60 seconds."
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "request_body": null,
+      "response": "{ success: true, data: { user: UserResponse } } | { success: true, data: null }",
+      "error_codes": [],
+      "description": "Returns the currently authenticated user's session data, or null if not logged in. Used by AuthGuard and useSession hook."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "request_body": null,
+      "response": "{ success: true, data: { message: string } }",
+      "error_codes": [],
+      "description": "Destroys the session cookie and logs the user out."
+    }
+  ],
+  "shared_hook": {
+    "hook_name": "useSession",
+    "file_path": "src/client/hooks/useSession.ts",
+    "consumes_endpoints": ["GET /api/auth/session"],
+    "returns": "{ user: UserResponse | null, isLoading: boolean, isAuthenticated: boolean, role: Role | null, logout: () => Promise<void> }",
+    "description": "Core session hook used across the entire application. Fetches the current session on mount. Provides user data, authentication status, and role. Used by AuthGuard and RoleGuard components. Also exposes a logout function that calls POST /api/auth/logout and clears client state."
+  }
+}

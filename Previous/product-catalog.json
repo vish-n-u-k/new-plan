@@ -1,0 +1,565 @@
+{
+  "module_name": "Product Catalog",
+  "module_description": "The main browsing experience where buyers discover, search, filter, and view clothing products. Serves as the primary landing page for authenticated buyers.",
+  "module_business_logic": "Only products with status ACTIVE and total stock >= 10 (MOQ) across all variants are displayed. Out-of-stock or low-stock products are hidden from the listing but may show as 'Unavailable' if accessed via direct URL. Buyers can filter by category (Men/Women/Kids), size, color, and price range. Search matches against product name and keywords. Sorting options: price low-high, price high-low, newest first. On the product detail screen, quantity selector enforces MOQ of 10 per variant. Stock is shown per variant (size + color). Add to Cart adds the selected variant and quantity to the server-side cart. If a product has a discount, both original and discounted price are shown.",
+  "depends_on_modules": ["Authentication & Registration"],
+  "screens": [
+    {
+      "screen_name": "Catalog Listing Screen",
+      "screen_type": "listing-grid",
+      "route": "/catalog",
+      "file_path": "src/app/catalog/page.tsx",
+      "page_name": "CatalogPage",
+      "auth_required": true,
+      "allowed_roles": ["BUYER"],
+      "components": [
+        {
+          "component_name": "CatalogHeader",
+          "file_path": "src/client/components/catalog/CatalogHeader.tsx",
+          "type": "layout",
+          "props": [
+            {
+              "name": "totalResults",
+              "type": "number",
+              "description": "Total number of products matching the current filters"
+            },
+            {
+              "name": "sortValue",
+              "type": "SortOption",
+              "description": "Currently selected sort option"
+            },
+            {
+              "name": "onSortChange",
+              "type": "(sort: SortOption) => void",
+              "description": "Callback when sort option changes"
+            }
+          ],
+          "description": "Top bar of the catalog page showing result count and sort dropdown. Sort options: price low-high, price high-low, newest first."
+        },
+        {
+          "component_name": "SearchBar",
+          "file_path": "src/client/components/catalog/SearchBar.tsx",
+          "type": "interactive",
+          "props": [
+            {
+              "name": "value",
+              "type": "string",
+              "description": "Current search query"
+            },
+            {
+              "name": "onChange",
+              "type": "(query: string) => void",
+              "description": "Callback on input change — debounced by the parent or hook"
+            },
+            {
+              "name": "onClear",
+              "type": "() => void",
+              "description": "Callback to clear the search input"
+            }
+          ],
+          "description": "Search input field with a search icon and clear button. Supports keyword matching against product name. Input is debounced (300ms) before triggering a search."
+        },
+        {
+          "component_name": "FilterSidebar",
+          "file_path": "src/client/components/catalog/FilterSidebar.tsx",
+          "type": "interactive",
+          "props": [
+            {
+              "name": "filters",
+              "type": "CatalogFilters",
+              "description": "Currently applied filter values"
+            },
+            {
+              "name": "onFilterChange",
+              "type": "(filters: CatalogFilters) => void",
+              "description": "Callback when any filter value changes"
+            },
+            {
+              "name": "onReset",
+              "type": "() => void",
+              "description": "Callback to reset all filters to defaults"
+            },
+            {
+              "name": "availableSizes",
+              "type": "string[]",
+              "description": "List of available sizes to populate the size filter checkboxes"
+            },
+            {
+              "name": "availableColors",
+              "type": "string[]",
+              "description": "List of available colors to populate the color filter checkboxes"
+            }
+          ],
+          "description": "Sidebar panel with filter controls: category radio buttons (Men/Women/Kids/All), size checkboxes, color checkboxes, and price range slider (min/max). Includes a 'Reset Filters' button. On mobile, collapses into a toggleable drawer."
+        },
+        {
+          "component_name": "ProductGrid",
+          "file_path": "src/client/components/catalog/ProductGrid.tsx",
+          "type": "display",
+          "props": [
+            {
+              "name": "products",
+              "type": "CatalogProduct[]",
+              "description": "Array of products to display"
+            },
+            {
+              "name": "isLoading",
+              "type": "boolean",
+              "description": "Whether data is currently loading — shows skeletons"
+            }
+          ],
+          "description": "Responsive grid layout displaying ProductCard components. Shows skeleton cards when loading. Adjusts columns based on viewport: 2 on mobile, 3 on tablet, 4 on desktop."
+        },
+        {
+          "component_name": "ProductCard",
+          "file_path": "src/client/components/catalog/ProductCard.tsx",
+          "type": "interactive",
+          "props": [
+            {
+              "name": "product",
+              "type": "CatalogProduct",
+              "description": "Product data to render"
+            }
+          ],
+          "description": "Single product card showing: thumbnail image, product name, price per unit (with discounted price if applicable), MOQ badge ('Min. 10 units'), and a 'Limited Stock' indicator if total stock < 50. Entire card is clickable — navigates to /catalog/[id]. Shows original price with strikethrough and discounted price when discount exists."
+        },
+        {
+          "component_name": "Pagination",
+          "file_path": "src/client/components/ui/Pagination.tsx",
+          "type": "interactive",
+          "props": [
+            {
+              "name": "currentPage",
+              "type": "number",
+              "description": "The currently active page number (1-indexed)"
+            },
+            {
+              "name": "totalPages",
+              "type": "number",
+              "description": "Total number of pages"
+            },
+            {
+              "name": "onPageChange",
+              "type": "(page: number) => void",
+              "description": "Callback when page changes"
+            }
+          ],
+          "description": "Shared pagination component with previous/next buttons and page number indicators. Placed below the product grid."
+        },
+        {
+          "component_name": "ActiveFilters",
+          "file_path": "src/client/components/catalog/ActiveFilters.tsx",
+          "type": "display",
+          "props": [
+            {
+              "name": "filters",
+              "type": "CatalogFilters",
+              "description": "Currently applied filter values"
+            },
+            {
+              "name": "onRemoveFilter",
+              "type": "(filterKey: string, value?: string) => void",
+              "description": "Callback to remove a specific filter or filter value"
+            },
+            {
+              "name": "onClearAll",
+              "type": "() => void",
+              "description": "Callback to clear all active filters"
+            }
+          ],
+          "description": "Horizontal row of filter chips showing currently active filters (e.g., 'Category: Men', 'Size: L', 'Price: ₹200-₹500'). Each chip has an X button to remove that filter. Includes a 'Clear all' link. Hidden when no filters are active."
+        }
+      ],
+      "hooks": [
+        {
+          "hook_name": "useCatalog",
+          "file_path": "src/client/hooks/useCatalog.ts",
+          "consumes_endpoints": ["GET /api/products"],
+          "returns": "{ products: CatalogProduct[], meta: PaginationMeta, isLoading: boolean, error: Error | null }",
+          "description": "Primary data-fetching hook for the catalog listing. Accepts filter, sort, search, and pagination parameters. Constructs query string and fetches from GET /api/products. Returns paginated product list with metadata."
+        },
+        {
+          "hook_name": "useCatalogFilters",
+          "file_path": "src/client/hooks/useCatalogFilters.ts",
+          "consumes_endpoints": ["GET /api/products/filter-options"],
+          "returns": "{ filters: CatalogFilters, setFilters: (filters: Partial<CatalogFilters>) => void, resetFilters: () => void, search: string, setSearch: (q: string) => void, sort: SortOption, setSort: (s: SortOption) => void, page: number, setPage: (p: number) => void, availableSizes: string[], availableColors: string[] }",
+          "description": "Manages all catalog filter, search, sort, and pagination state. Syncs state to URL query parameters so filters are shareable and persist on back navigation. Fetches available filter options (sizes, colors) from the API on mount."
+        },
+        {
+          "hook_name": "useAddToCart",
+          "file_path": "src/client/hooks/useAddToCart.ts",
+          "consumes_endpoints": ["POST /api/cart/items"],
+          "returns": "{ addToCart: (variantId: string, quantity: number) => Promise<void>, isLoading: boolean, error: string | null }",
+          "description": "Adds a product variant to the cart. Used on the Product Detail screen. Validates quantity >= MOQ (10) before submitting. On success, can trigger a toast notification."
+        }
+      ],
+      "validation_schemas": [],
+      "user_interactions": [
+        "Type in search bar to search by product name or keyword",
+        "Select category filter (Men/Women/Kids/All)",
+        "Toggle size checkboxes to filter by size",
+        "Toggle color checkboxes to filter by color",
+        "Adjust price range slider",
+        "Remove individual filter chips from active filters bar",
+        "Clear all filters",
+        "Change sort option (price low-high, price high-low, newest)",
+        "Click a product card to navigate to product detail",
+        "Click pagination buttons to navigate between pages"
+      ],
+      "states": {
+        "loading": "ProductGrid shows 8 skeleton cards. FilterSidebar shows shimmer placeholders for filter options.",
+        "empty": "EmptyState component centered in the grid area with message: 'No products match your filters. Try adjusting your search or filters.' and a 'Reset Filters' button.",
+        "error": "ErrorBanner above the grid with message: 'Failed to load products. Please try again.' and a 'Retry' button."
+      }
+    },
+    {
+      "screen_name": "Product Detail Screen",
+      "screen_type": "detail-view",
+      "route": "/catalog/[id]",
+      "file_path": "src/app/catalog/[id]/page.tsx",
+      "page_name": "ProductDetailPage",
+      "auth_required": true,
+      "allowed_roles": ["BUYER"],
+      "components": [
+        {
+          "component_name": "ProductImageGallery",
+          "file_path": "src/client/components/catalog/ProductImageGallery.tsx",
+          "type": "interactive",
+          "props": [
+            {
+              "name": "images",
+              "type": "{ url: string, alt: string }[]",
+              "description": "Array of product image URLs and alt text"
+            }
+          ],
+          "description": "Image gallery with a large main image and thumbnail strip below. Clicking a thumbnail swaps the main image. Supports swipe gestures on mobile. First image is the primary thumbnail shown in the catalog grid."
+        },
+        {
+          "component_name": "ProductInfo",
+          "file_path": "src/client/components/catalog/ProductInfo.tsx",
+          "type": "display",
+          "props": [
+            {
+              "name": "product",
+              "type": "ProductDetail",
+              "description": "Full product data including name, description, category, and price range"
+            }
+          ],
+          "description": "Displays product name, description, category badge, and base price range (e.g., '₹150 - ₹250 per unit'). If a discount is active, shows original price with strikethrough and discounted price highlighted."
+        },
+        {
+          "component_name": "VariantSelector",
+          "file_path": "src/client/components/catalog/VariantSelector.tsx",
+          "type": "interactive",
+          "props": [
+            {
+              "name": "variants",
+              "type": "ProductVariant[]",
+              "description": "All available variants for this product"
+            },
+            {
+              "name": "selectedVariant",
+              "type": "ProductVariant | null",
+              "description": "Currently selected variant"
+            },
+            {
+              "name": "onVariantChange",
+              "type": "(variant: ProductVariant) => void",
+              "description": "Callback when variant selection changes"
+            }
+          ],
+          "description": "Two-step variant selector: first pick a size (button group), then pick a color (color swatches). Unavailable combinations (zero stock) are shown as disabled/grayed out. When a variant is selected, its specific price and stock count are displayed."
+        },
+        {
+          "component_name": "QuantitySelector",
+          "file_path": "src/client/components/catalog/QuantitySelector.tsx",
+          "type": "interactive",
+          "props": [
+            {
+              "name": "value",
+              "type": "number",
+              "description": "Current quantity value"
+            },
+            {
+              "name": "onChange",
+              "type": "(quantity: number) => void",
+              "description": "Callback when quantity changes"
+            },
+            {
+              "name": "min",
+              "type": "number",
+              "description": "Minimum allowed quantity (MOQ = 10)"
+            },
+            {
+              "name": "max",
+              "type": "number",
+              "description": "Maximum allowed quantity (available stock for selected variant)"
+            }
+          ],
+          "description": "Numeric input with +/- buttons. Enforces minimum of 10 (MOQ) and maximum of available stock. Shows 'Min. 10 units' helper text. Displays inline error if buyer tries to go below MOQ."
+        },
+        {
+          "component_name": "AddToCartButton",
+          "file_path": "src/client/components/catalog/AddToCartButton.tsx",
+          "type": "interactive",
+          "props": [
+            {
+              "name": "onClick",
+              "type": "() => void",
+              "description": "Callback when Add to Cart is clicked"
+            },
+            {
+              "name": "disabled",
+              "type": "boolean",
+              "description": "Disabled when no variant selected or stock unavailable"
+            },
+            {
+              "name": "isLoading",
+              "type": "boolean",
+              "description": "Shows spinner while add-to-cart request is in flight"
+            }
+          ],
+          "description": "Primary CTA button to add the selected variant and quantity to the cart. Disabled until a variant is selected. Shows spinner during the API call. On success, shows a toast confirmation with a 'View Cart' link."
+        },
+        {
+          "component_name": "StockIndicator",
+          "file_path": "src/client/components/catalog/StockIndicator.tsx",
+          "type": "display",
+          "props": [
+            {
+              "name": "stock",
+              "type": "number",
+              "description": "Available stock for the selected variant"
+            }
+          ],
+          "description": "Shows stock availability for the selected variant. Displays 'In Stock (X units)' in green when stock >= 50, 'Limited Stock (X units)' in amber when stock is 10-49, and 'Out of Stock' in red when stock < 10."
+        },
+        {
+          "component_name": "ProductBreadcrumb",
+          "file_path": "src/client/components/catalog/ProductBreadcrumb.tsx",
+          "type": "display",
+          "props": [
+            {
+              "name": "category",
+              "type": "string",
+              "description": "Product category (e.g., 'Men')"
+            },
+            {
+              "name": "productName",
+              "type": "string",
+              "description": "Product name for the final breadcrumb segment"
+            }
+          ],
+          "description": "Breadcrumb navigation: Catalog > {Category} > {Product Name}. Catalog and Category links navigate back to the listing with the category filter pre-applied."
+        }
+      ],
+      "hooks": [
+        {
+          "hook_name": "useProductDetail",
+          "file_path": "src/client/hooks/useProductDetail.ts",
+          "consumes_endpoints": ["GET /api/products/[id]"],
+          "returns": "{ product: ProductDetail | null, isLoading: boolean, error: Error | null }",
+          "description": "Fetches a single product by ID including all variants, images, and discount info. Returns null if product not found or not available."
+        },
+        {
+          "hook_name": "useVariantSelection",
+          "file_path": "src/client/hooks/useVariantSelection.ts",
+          "consumes_endpoints": [],
+          "returns": "{ selectedSize: string | null, selectedColor: string | null, selectedVariant: ProductVariant | null, quantity: number, setSize: (size: string) => void, setColor: (color: string) => void, setQuantity: (qty: number) => void, availableColors: string[], isVariantSelected: boolean }",
+          "description": "Client-side state hook managing variant selection logic. When a size is selected, filters available colors to only those with stock for that size. When both size and color are selected, resolves the specific variant. Initializes quantity to MOQ (10)."
+        },
+        {
+          "hook_name": "useAddToCart",
+          "file_path": "src/client/hooks/useAddToCart.ts",
+          "consumes_endpoints": ["POST /api/cart/items"],
+          "returns": "{ addToCart: (variantId: string, quantity: number) => Promise<void>, isLoading: boolean, error: string | null }",
+          "description": "Shared hook — also listed in Catalog Listing Screen. Adds a variant to the cart via POST /api/cart/items."
+        }
+      ],
+      "validation_schemas": ["addToCartSchema"],
+      "user_interactions": [
+        "Click product image thumbnails to switch main image",
+        "Swipe images on mobile",
+        "Select a size from the size button group",
+        "Select a color from the color swatches",
+        "Increase or decrease quantity using +/- buttons or direct input",
+        "Click 'Add to Cart' button",
+        "Click breadcrumb links to navigate back to catalog or category",
+        "Click 'View Cart' link in the success toast"
+      ],
+      "states": {
+        "loading": "Skeleton layout with image placeholder, text shimmer blocks for name/description, and disabled selector placeholders.",
+        "empty": "Not applicable — if product is not found, show a 404-style message: 'This product is no longer available.' with a 'Back to Catalog' link.",
+        "error": "ErrorBanner with message: 'Failed to load product details. Please try again.' and a 'Retry' button."
+      }
+    }
+  ],
+  "validation_schema_definitions": [
+    {
+      "schema_name": "addToCartSchema",
+      "file_path": "src/schemas/cart.schema.ts",
+      "fields": [
+        {
+          "name": "variantId",
+          "type": "z.string().cuid()",
+          "validation": "Required, valid variant ID"
+        },
+        {
+          "name": "quantity",
+          "type": "z.number().int().min(10)",
+          "validation": "Required, integer, minimum 10 (MOQ)"
+        }
+      ],
+      "inferred_type": "AddToCartInput"
+    },
+    {
+      "schema_name": "catalogQuerySchema",
+      "file_path": "src/schemas/product.schema.ts",
+      "fields": [
+        {
+          "name": "search",
+          "type": "z.string().optional()",
+          "validation": "Optional keyword search"
+        },
+        {
+          "name": "category",
+          "type": "z.enum(['MEN', 'WOMEN', 'KIDS']).optional()",
+          "validation": "Optional category filter"
+        },
+        {
+          "name": "sizes",
+          "type": "z.array(z.string()).optional()",
+          "validation": "Optional array of size values"
+        },
+        {
+          "name": "colors",
+          "type": "z.array(z.string()).optional()",
+          "validation": "Optional array of color values"
+        },
+        {
+          "name": "priceMin",
+          "type": "z.number().min(0).optional()",
+          "validation": "Optional minimum price"
+        },
+        {
+          "name": "priceMax",
+          "type": "z.number().min(0).optional()",
+          "validation": "Optional maximum price"
+        },
+        {
+          "name": "sort",
+          "type": "z.enum(['price_asc', 'price_desc', 'newest']).optional()",
+          "validation": "Optional sort option, defaults to newest"
+        },
+        {
+          "name": "page",
+          "type": "z.number().int().min(1).optional()",
+          "validation": "Optional page number, defaults to 1"
+        },
+        {
+          "name": "limit",
+          "type": "z.number().int().min(1).max(50).optional()",
+          "validation": "Optional page size, defaults to 20"
+        }
+      ],
+      "inferred_type": "CatalogQuery"
+    }
+  ],
+  "api_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/products",
+      "query_params": "CatalogQuery (search, category, sizes, colors, priceMin, priceMax, sort, page, limit)",
+      "response": "{ success: true, data: { items: CatalogProduct[], meta: PaginationMeta } }",
+      "error_codes": ["VALIDATION_ERROR"],
+      "description": "Returns paginated product listing. Only returns ACTIVE products with stock >= MOQ. Supports filtering, searching, sorting, and pagination via query parameters."
+    },
+    {
+      "method": "GET",
+      "path": "/api/products/[id]",
+      "query_params": null,
+      "response": "{ success: true, data: ProductDetail }",
+      "error_codes": ["NOT_FOUND"],
+      "description": "Returns full product detail including all variants, images, active discount, and stock per variant."
+    },
+    {
+      "method": "GET",
+      "path": "/api/products/filter-options",
+      "query_params": null,
+      "response": "{ success: true, data: { sizes: string[], colors: string[] } }",
+      "error_codes": [],
+      "description": "Returns available sizes and colors across all active products. Used to populate filter sidebar options."
+    },
+    {
+      "method": "POST",
+      "path": "/api/cart/items",
+      "request_body": "AddToCartInput",
+      "response": "{ success: true, data: { cartItem: CartItem } }",
+      "error_codes": ["VALIDATION_ERROR", "INSUFFICIENT_STOCK", "BELOW_MOQ"],
+      "description": "Adds a product variant to the buyer's cart. Validates stock availability and MOQ. If the variant is already in the cart, increments the quantity."
+    }
+  ],
+  "types": [
+    {
+      "type_name": "CatalogProduct",
+      "description": "Lightweight product representation for the grid listing",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "name", "type": "string" },
+        { "name": "thumbnailUrl", "type": "string" },
+        { "name": "category", "type": "Category" },
+        { "name": "priceMin", "type": "number" },
+        { "name": "priceMax", "type": "number" },
+        { "name": "discountedPriceMin", "type": "number | null" },
+        { "name": "discountedPriceMax", "type": "number | null" },
+        { "name": "totalStock", "type": "number" },
+        { "name": "moq", "type": "number" }
+      ]
+    },
+    {
+      "type_name": "ProductDetail",
+      "description": "Full product representation for the detail page",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "name", "type": "string" },
+        { "name": "description", "type": "string" },
+        { "name": "category", "type": "Category" },
+        { "name": "images", "type": "{ url: string, alt: string }[]" },
+        { "name": "variants", "type": "ProductVariant[]" },
+        { "name": "discount", "type": "{ type: DiscountType, value: number, startDate: string | null, endDate: string | null } | null" },
+        { "name": "status", "type": "ProductStatus" },
+        { "name": "createdAt", "type": "string" }
+      ]
+    },
+    {
+      "type_name": "ProductVariant",
+      "description": "A specific size + color combination with its own price and stock",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "size", "type": "string" },
+        { "name": "color", "type": "string" },
+        { "name": "price", "type": "number" },
+        { "name": "discountedPrice", "type": "number | null" },
+        { "name": "stock", "type": "number" }
+      ]
+    },
+    {
+      "type_name": "CatalogFilters",
+      "description": "Client-side filter state object",
+      "fields": [
+        { "name": "category", "type": "Category | null" },
+        { "name": "sizes", "type": "string[]" },
+        { "name": "colors", "type": "string[]" },
+        { "name": "priceMin", "type": "number | null" },
+        { "name": "priceMax", "type": "number | null" }
+      ]
+    },
+    {
+      "type_name": "SortOption",
+      "description": "Available sort options for the catalog",
+      "fields": [
+        { "name": "value", "type": "'price_asc' | 'price_desc' | 'newest'" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1547 @@
+{
+  "module_name": "Settings & Account Management",
+  "module_description": "Lets both buyers and seller manage their account details, saved addresses, store branding, and payment/return policy configuration",
+  "module_business_logic": "Each role sees only their relevant settings. Buyers can edit profile, change password (requires current password verification), update email (triggers re-verification), and manage multiple shipping addresses with one default. Seller can edit profile, upload store logo, configure store name/description/return policy/contact info, and enter bank account details and payment gateway API keys. Email update requires re-verification — emailVerified is set to false until the new email is confirmed.",
+  "depends_on_modules": ["Authentication & Registration"],
+
+  "database": {
+    "models": [
+      {
+        "model_name": "Address",
+        "description": "Shipping address saved by a buyer. One address can be marked as default. Used during checkout for delivery.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique identifier"
+          },
+          {
+            "name": "userId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the buyer who owns this address"
+          },
+          {
+            "name": "label",
+            "type": "String",
+            "constraints": "",
+            "description": "User-friendly label like 'Warehouse', 'Office', 'Home'"
+          },
+          {
+            "name": "recipientName",
+            "type": "String",
+            "constraints": "",
+            "description": "Name of the person receiving the shipment"
+          },
+          {
+            "name": "phone",
+            "type": "String",
+            "constraints": "",
+            "description": "Contact phone for delivery"
+          },
+          {
+            "name": "addressLine1",
+            "type": "String",
+            "constraints": "",
+            "description": "Street address line 1"
+          },
+          {
+            "name": "addressLine2",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Street address line 2 (optional)"
+          },
+          {
+            "name": "city",
+            "type": "String",
+            "constraints": "",
+            "description": "City name"
+          },
+          {
+            "name": "state",
+            "type": "String",
+            "constraints": "",
+            "description": "State or province"
+          },
+          {
+            "name": "pincode",
+            "type": "String",
+            "constraints": "",
+            "description": "Postal/PIN code — used for Delhivery serviceability check and shipping cost calculation"
+          },
+          {
+            "name": "country",
+            "type": "String",
+            "constraints": "@default(\"India\")",
+            "description": "Country, defaults to India"
+          },
+          {
+            "name": "isDefault",
+            "type": "Boolean",
+            "constraints": "@default(false)",
+            "description": "Whether this is the buyer's default shipping address"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "Creation timestamp"
+          },
+          {
+            "name": "updatedAt",
+            "type": "DateTime",
+            "constraints": "@updatedAt",
+            "description": "Last update timestamp"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "user",
+            "type": "User",
+            "relation_type": "many-to-one",
+            "annotation": "@relation(fields: [userId], references: [id], onDelete: Cascade)",
+            "description": "The buyer who owns this address"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["userId"],
+            "type": "index",
+            "description": "List all addresses for a buyer"
+          },
+          {
+            "fields": ["userId", "isDefault"],
+            "type": "index",
+            "description": "Quickly find a buyer's default address for checkout pre-fill"
+          }
+        ]
+      },
+      {
+        "model_name": "StoreConfig",
+        "description": "Singleton configuration record for the seller's store — branding, return policy, contact info, payment credentials, and shipping settings. Only one record exists.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique identifier"
+          },
+          {
+            "name": "storeName",
+            "type": "String",
+            "constraints": "",
+            "description": "Public store name displayed to buyers"
+          },
+          {
+            "name": "storeDescription",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Brief description of the store"
+          },
+          {
+            "name": "storeLogo",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "URL to the store logo image"
+          },
+          {
+            "name": "returnPolicy",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Return policy text displayed to buyers on product and order pages"
+          },
+          {
+            "name": "contactEmail",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Public contact email for buyer inquiries"
+          },
+          {
+            "name": "contactPhone",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Public contact phone for buyer inquiries"
+          },
+          {
+            "name": "bankAccountName",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Bank account holder name for bank transfer payments"
+          },
+          {
+            "name": "bankAccountNumber",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Bank account number shown to buyers for bank transfer orders"
+          },
+          {
+            "name": "bankIfsc",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "IFSC code for the bank branch"
+          },
+          {
+            "name": "bankUpiId",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "UPI ID for quick bank transfer payments"
+          },
+          {
+            "name": "paymentGatewayProvider",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Payment gateway provider name — 'razorpay' or 'stripe'"
+          },
+          {
+            "name": "paymentGatewayKeyId",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Payment gateway public/key ID"
+          },
+          {
+            "name": "paymentGatewayKeySecret",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Payment gateway secret key (encrypted at rest)"
+          },
+          {
+            "name": "delhiveryApiKey",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Delhivery API key for shipping integration"
+          },
+          {
+            "name": "warehouseAddress",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Full warehouse/pickup address for Delhivery shipments"
+          },
+          {
+            "name": "warehousePincode",
+            "type": "String",
+            "constraints": "? (nullable)",
+            "description": "Warehouse pincode for shipping cost calculation"
+          },
+          {
+            "name": "defaultPackageWeight",
+            "type": "Decimal",
+            "constraints": "? (nullable) @db.Decimal(10, 2)",
+            "description": "Default package weight in kg per item for auto shipping cost calculation"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "Creation timestamp"
+          },
+          {
+            "name": "updatedAt",
+            "type": "DateTime",
+            "constraints": "@updatedAt",
+            "description": "Last update timestamp"
+          }
+        ],
+        "relations": [],
+        "indexes": []
+      }
+    ],
+    "enums": [],
+    "seed_data": [
+      {
+        "model": "StoreConfig",
+        "description": "Initial singleton store configuration so the seller can start configuring immediately",
+        "records": "One StoreConfig record with storeName 'B2B Wholesale Clothing', all other optional fields null"
+      }
+    ]
+  },
+
+  "backend": {
+    "schemas": [
+      {
+        "schema_name": "updateProfileSchema",
+        "file_path": "src/schemas/profile.schema.ts",
+        "description": "Validates profile update for both buyer and seller — common fields",
+        "fields": [
+          {
+            "name": "name",
+            "type": "z.string().min(1).max(100).optional()",
+            "validation": "Optional, 1-100 characters"
+          },
+          {
+            "name": "businessName",
+            "type": "z.string().min(1).max(200).optional()",
+            "validation": "Optional, 1-200 characters"
+          },
+          {
+            "name": "phone",
+            "type": "z.string().min(10).max(15).optional()",
+            "validation": "Optional, 10-15 digit phone number"
+          }
+        ],
+        "inferred_type": "UpdateProfileInput"
+      },
+      {
+        "schema_name": "changePasswordSchema",
+        "file_path": "src/schemas/profile.schema.ts",
+        "description": "Validates password change request requiring current password",
+        "fields": [
+          {
+            "name": "currentPassword",
+            "type": "z.string().min(1)",
+            "validation": "Required, current password for verification"
+          },
+          {
+            "name": "newPassword",
+            "type": "z.string().min(8).max(128)",
+            "validation": "Required, minimum 8 characters"
+          }
+        ],
+        "inferred_type": "ChangePasswordInput"
+      },
+      {
+        "schema_name": "changeEmailSchema",
+        "file_path": "src/schemas/profile.schema.ts",
+        "description": "Validates email change request",
+        "fields": [
+          {
+            "name": "newEmail",
+            "type": "z.string().email()",
+            "validation": "Must be a valid email address"
+          },
+          {
+            "name": "currentPassword",
+            "type": "z.string().min(1)",
+            "validation": "Required, current password for verification"
+          }
+        ],
+        "inferred_type": "ChangeEmailInput"
+      },
+      {
+        "schema_name": "createAddressSchema",
+        "file_path": "src/schemas/address.schema.ts",
+        "description": "Validates new shipping address creation",
+        "fields": [
+          {
+            "name": "label",
+            "type": "z.string().min(1).max(50)",
+            "validation": "Required, 1-50 characters (e.g. 'Warehouse', 'Office')"
+          },
+          {
+            "name": "recipientName",
+            "type": "z.string().min(1).max(100)",
+            "validation": "Required, 1-100 characters"
+          },
+          {
+            "name": "phone",
+            "type": "z.string().min(10).max(15)",
+            "validation": "Required, 10-15 digit phone number"
+          },
+          {
+            "name": "addressLine1",
+            "type": "z.string().min(1).max(200)",
+            "validation": "Required, 1-200 characters"
+          },
+          {
+            "name": "addressLine2",
+            "type": "z.string().max(200).optional()",
+            "validation": "Optional, max 200 characters"
+          },
+          {
+            "name": "city",
+            "type": "z.string().min(1).max(100)",
+            "validation": "Required, 1-100 characters"
+          },
+          {
+            "name": "state",
+            "type": "z.string().min(1).max(100)",
+            "validation": "Required, 1-100 characters"
+          },
+          {
+            "name": "pincode",
+            "type": "z.string().min(6).max(6)",
+            "validation": "Required, exactly 6 digits (Indian pincode)"
+          },
+          {
+            "name": "isDefault",
+            "type": "z.boolean().optional()",
+            "validation": "Optional, defaults to false"
+          }
+        ],
+        "inferred_type": "CreateAddressInput"
+      },
+      {
+        "schema_name": "updateAddressSchema",
+        "file_path": "src/schemas/address.schema.ts",
+        "description": "Validates address update — all fields optional",
+        "fields": [
+          {
+            "name": "label",
+            "type": "z.string().min(1).max(50).optional()",
+            "validation": "Optional, 1-50 characters"
+          },
+          {
+            "name": "recipientName",
+            "type": "z.string().min(1).max(100).optional()",
+            "validation": "Optional, 1-100 characters"
+          },
+          {
+            "name": "phone",
+            "type": "z.string().min(10).max(15).optional()",
+            "validation": "Optional, 10-15 digit phone number"
+          },
+          {
+            "name": "addressLine1",
+            "type": "z.string().min(1).max(200).optional()",
+            "validation": "Optional, 1-200 characters"
+          },
+          {
+            "name": "addressLine2",
+            "type": "z.string().max(200).nullable().optional()",
+            "validation": "Optional, nullable, max 200 characters"
+          },
+          {
+            "name": "city",
+            "type": "z.string().min(1).max(100).optional()",
+            "validation": "Optional, 1-100 characters"
+          },
+          {
+            "name": "state",
+            "type": "z.string().min(1).max(100).optional()",
+            "validation": "Optional, 1-100 characters"
+          },
+          {
+            "name": "pincode",
+            "type": "z.string().min(6).max(6).optional()",
+            "validation": "Optional, exactly 6 digits"
+          },
+          {
+            "name": "isDefault",
+            "type": "z.boolean().optional()",
+            "validation": "Optional"
+          }
+        ],
+        "inferred_type": "UpdateAddressInput"
+      },
+      {
+        "schema_name": "updateStoreConfigSchema",
+        "file_path": "src/schemas/storeConfig.schema.ts",
+        "description": "Validates store branding and return policy updates",
+        "fields": [
+          {
+            "name": "storeName",
+            "type": "z.string().min(1).max(200).optional()",
+            "validation": "Optional, 1-200 characters"
+          },
+          {
+            "name": "storeDescription",
+            "type": "z.string().max(2000).nullable().optional()",
+            "validation": "Optional, max 2000 characters"
+          },
+          {
+            "name": "storeLogo",
+            "type": "z.string().url().nullable().optional()",
+            "validation": "Optional, valid URL or null to remove"
+          },
+          {
+            "name": "returnPolicy",
+            "type": "z.string().max(5000).nullable().optional()",
+            "validation": "Optional, max 5000 characters"
+          },
+          {
+            "name": "contactEmail",
+            "type": "z.string().email().nullable().optional()",
+            "validation": "Optional, valid email or null"
+          },
+          {
+            "name": "contactPhone",
+            "type": "z.string().min(10).max(15).nullable().optional()",
+            "validation": "Optional, 10-15 digits or null"
+          }
+        ],
+        "inferred_type": "UpdateStoreConfigInput"
+      },
+      {
+        "schema_name": "updatePaymentConfigSchema",
+        "file_path": "src/schemas/storeConfig.schema.ts",
+        "description": "Validates seller payment configuration updates — bank details and gateway keys",
+        "fields": [
+          {
+            "name": "bankAccountName",
+            "type": "z.string().max(200).nullable().optional()",
+            "validation": "Optional, max 200 characters"
+          },
+          {
+            "name": "bankAccountNumber",
+            "type": "z.string().max(30).nullable().optional()",
+            "validation": "Optional, max 30 characters"
+          },
+          {
+            "name": "bankIfsc",
+            "type": "z.string().max(11).nullable().optional()",
+            "validation": "Optional, max 11 characters (standard IFSC length)"
+          },
+          {
+            "name": "bankUpiId",
+            "type": "z.string().max(100).nullable().optional()",
+            "validation": "Optional, max 100 characters"
+          },
+          {
+            "name": "paymentGatewayProvider",
+            "type": "z.enum(['razorpay', 'stripe']).nullable().optional()",
+            "validation": "Optional, must be 'razorpay' or 'stripe'"
+          },
+          {
+            "name": "paymentGatewayKeyId",
+            "type": "z.string().max(200).nullable().optional()",
+            "validation": "Optional, max 200 characters"
+          },
+          {
+            "name": "paymentGatewayKeySecret",
+            "type": "z.string().max(200).nullable().optional()",
+            "validation": "Optional, max 200 characters"
+          }
+        ],
+        "inferred_type": "UpdatePaymentConfigInput"
+      }
+    ],
+    "services": [
+      {
+        "service_name": "profileService",
+        "file_path": "src/server/services/profile.service.ts",
+        "description": "Handles user profile operations — update profile fields, change password, and change email with re-verification",
+        "methods": [
+          {
+            "method_name": "updateProfile",
+            "parameters": "(userId: string, data: UpdateProfileInput): Promise<UserResponse>",
+            "business_logic": "1. Find user by ID. 2. If not found, throw not found error. 3. Update the user's name, businessName, and/or phone with the provided values. 4. Return the updated user (without passwordHash).",
+            "db_operations": [
+              "db.user.findUnique({ where: { id: userId } })",
+              "db.user.update({ where: { id: userId }, data })"
+            ],
+            "error_cases": [
+              {
+                "condition": "User not found",
+                "error": "AppError.notFound('User')"
+              }
+            ]
+          },
+          {
+            "method_name": "changePassword",
+            "parameters": "(userId: string, data: ChangePasswordInput): Promise<void>",
+            "business_logic": "1. Find user by ID. 2. If not found, throw not found error. 3. Compare currentPassword against stored passwordHash using bcrypt. 4. If mismatch, throw unauthorized error. 5. Hash the newPassword with bcrypt (12 salt rounds). 6. Update the user's passwordHash. 7. Delete all sessions for this user except the current one (force re-login on other devices).",
+            "db_operations": [
+              "db.user.findUnique({ where: { id: userId } })",
+              "db.user.update({ where: { id: userId }, data: { passwordHash } })",
+              "db.session.deleteMany({ where: { userId, NOT: { token: currentSessionToken } } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "User not found",
+                "error": "AppError.notFound('User')"
+              },
+              {
+                "condition": "Current password is incorrect",
+                "error": "AppError.unauthorized('Current password is incorrect')"
+              }
+            ]
+          },
+          {
+            "method_name": "changeEmail",
+            "parameters": "(userId: string, data: ChangeEmailInput): Promise<UserResponse>",
+            "business_logic": "1. Find user by ID. 2. If not found, throw not found error. 3. Compare currentPassword against stored passwordHash. 4. If mismatch, throw unauthorized error. 5. Check if another user already has the newEmail. 6. If taken, throw conflict error. 7. Update the user's email and set emailVerified to false. 8. Generate a new EmailVerificationToken with 24-hour expiry. 9. Send verification email to the new address. 10. Return the updated user.",
+            "db_operations": [
+              "db.user.findUnique({ where: { id: userId } })",
+              "db.user.findUnique({ where: { email: newEmail } })",
+              "db.user.update({ where: { id: userId }, data: { email: newEmail, emailVerified: false } })",
+              "db.emailVerificationToken.create({ data: { userId, token, expiresAt } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "User not found",
+                "error": "AppError.notFound('User')"
+              },
+              {
+                "condition": "Current password is incorrect",
+                "error": "AppError.unauthorized('Current password is incorrect')"
+              },
+              {
+                "condition": "New email already taken by another user",
+                "error": "AppError.conflict('A user with this email already exists')"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service_name": "addressService",
+        "file_path": "src/server/services/address.service.ts",
+        "description": "Manages buyer shipping addresses — CRUD operations and default address logic",
+        "methods": [
+          {
+            "method_name": "findByUserId",
+            "parameters": "(userId: string): Promise<Address[]>",
+            "business_logic": "1. Find all addresses for the given user, ordered by isDefault desc then createdAt desc. 2. Return the list.",
+            "db_operations": [
+              "db.address.findMany({ where: { userId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }] })"
+            ],
+            "error_cases": []
+          },
+          {
+            "method_name": "findById",
+            "parameters": "(id: string, userId: string): Promise<Address>",
+            "business_logic": "1. Find address by ID where userId matches. 2. If not found, throw not found error. 3. Return the address.",
+            "db_operations": [
+              "db.address.findFirst({ where: { id, userId } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "Address not found or does not belong to this user",
+                "error": "AppError.notFound('Address')"
+              }
+            ]
+          },
+          {
+            "method_name": "create",
+            "parameters": "(userId: string, data: CreateAddressInput): Promise<Address>",
+            "business_logic": "1. If data.isDefault is true, unset isDefault on all other addresses for this user. 2. If this is the user's first address, force isDefault to true regardless of input. 3. Create the address record. 4. Return the created address.",
+            "db_operations": [
+              "db.address.count({ where: { userId } })",
+              "db.address.updateMany({ where: { userId, isDefault: true }, data: { isDefault: false } }) — only if setting new default",
+              "db.address.create({ data: { ...data, userId } })"
+            ],
+            "error_cases": []
+          },
+          {
+            "method_name": "update",
+            "parameters": "(id: string, userId: string, data: UpdateAddressInput): Promise<Address>",
+            "business_logic": "1. Find address by ID where userId matches. 2. If not found, throw not found error. 3. If data.isDefault is true, unset isDefault on all other addresses for this user. 4. Update the address with provided fields. 5. Return the updated address.",
+            "db_operations": [
+              "db.address.findFirst({ where: { id, userId } })",
+              "db.address.updateMany({ where: { userId, isDefault: true, NOT: { id } }, data: { isDefault: false } }) — only if setting new default",
+              "db.address.update({ where: { id }, data })"
+            ],
+            "error_cases": [
+              {
+                "condition": "Address not found or does not belong to this user",
+                "error": "AppError.notFound('Address')"
+              }
+            ]
+          },
+          {
+            "method_name": "delete",
+            "parameters": "(id: string, userId: string): Promise<void>",
+            "business_logic": "1. Find address by ID where userId matches. 2. If not found, throw not found error. 3. Delete the address. 4. If the deleted address was the default, set the most recently created remaining address as the new default.",
+            "db_operations": [
+              "db.address.findFirst({ where: { id, userId } })",
+              "db.address.delete({ where: { id } })",
+              "db.address.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } }) — only if deleted was default",
+              "db.address.update({ where: { id: newDefault.id }, data: { isDefault: true } }) — only if replacement found"
+            ],
+            "error_cases": [
+              {
+                "condition": "Address not found or does not belong to this user",
+                "error": "AppError.notFound('Address')"
+              }
+            ]
+          },
+          {
+            "method_name": "setDefault",
+            "parameters": "(id: string, userId: string): Promise<Address>",
+            "business_logic": "1. Find address by ID where userId matches. 2. If not found, throw not found error. 3. Unset isDefault on all addresses for this user. 4. Set isDefault on the specified address. 5. Return the updated address.",
+            "db_operations": [
+              "db.address.findFirst({ where: { id, userId } })",
+              "db.address.updateMany({ where: { userId, isDefault: true }, data: { isDefault: false } })",
+              "db.address.update({ where: { id }, data: { isDefault: true } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "Address not found or does not belong to this user",
+                "error": "AppError.notFound('Address')"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service_name": "storeConfigService",
+        "file_path": "src/server/services/storeConfig.service.ts",
+        "description": "Manages the singleton store configuration — branding, return policy, payment credentials, and shipping settings",
+        "methods": [
+          {
+            "method_name": "get",
+            "parameters": "(): Promise<StoreConfig>",
+            "business_logic": "1. Find the first (and only) StoreConfig record. 2. If not found, throw not found error (should always exist from seed). 3. Return the config.",
+            "db_operations": [
+              "db.storeConfig.findFirst()"
+            ],
+            "error_cases": [
+              {
+                "condition": "StoreConfig not found (seed data missing)",
+                "error": "AppError.notFound('StoreConfig')"
+              }
+            ]
+          },
+          {
+            "method_name": "getPublic",
+            "parameters": "(): Promise<PublicStoreConfig>",
+            "business_logic": "1. Find the first StoreConfig record. 2. If not found, throw not found error. 3. Return only public fields: storeName, storeDescription, storeLogo, returnPolicy, contactEmail, contactPhone. Exclude all credentials and API keys.",
+            "db_operations": [
+              "db.storeConfig.findFirst({ select: { storeName, storeDescription, storeLogo, returnPolicy, contactEmail, contactPhone } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "StoreConfig not found",
+                "error": "AppError.notFound('StoreConfig')"
+              }
+            ]
+          },
+          {
+            "method_name": "updateStore",
+            "parameters": "(data: UpdateStoreConfigInput): Promise<StoreConfig>",
+            "business_logic": "1. Find the first StoreConfig record. 2. If not found, throw not found error. 3. Update with provided fields (storeName, storeDescription, storeLogo, returnPolicy, contactEmail, contactPhone). 4. Return the updated config.",
+            "db_operations": [
+              "db.storeConfig.findFirst()",
+              "db.storeConfig.update({ where: { id }, data })"
+            ],
+            "error_cases": [
+              {
+                "condition": "StoreConfig not found",
+                "error": "AppError.notFound('StoreConfig')"
+              }
+            ]
+          },
+          {
+            "method_name": "updatePaymentConfig",
+            "parameters": "(data: UpdatePaymentConfigInput): Promise<StoreConfig>",
+            "business_logic": "1. Find the first StoreConfig record. 2. If not found, throw not found error. 3. If paymentGatewayKeySecret is provided, encrypt it before storing. 4. Update with provided payment fields. 5. Return the updated config.",
+            "db_operations": [
+              "db.storeConfig.findFirst()",
+              "db.storeConfig.update({ where: { id }, data })"
+            ],
+            "error_cases": [
+              {
+                "condition": "StoreConfig not found",
+                "error": "AppError.notFound('StoreConfig')"
+              }
+            ]
+          },
+          {
+            "method_name": "getBankDetails",
+            "parameters": "(): Promise<BankDetails | null>",
+            "business_logic": "1. Find the first StoreConfig. 2. If not found, return null. 3. Return only bankAccountName, bankAccountNumber, bankIfsc, bankUpiId. 4. If all bank fields are null, return null.",
+            "db_operations": [
+              "db.storeConfig.findFirst({ select: { bankAccountName, bankAccountNumber, bankIfsc, bankUpiId } })"
+            ],
+            "error_cases": []
+          }
+        ]
+      }
+    ],
+    "api_routes": [
+      {
+        "method": "PUT",
+        "path": "/api/users/me/profile",
+        "file_path": "src/app/api/users/me/profile/route.ts",
+        "handler_function": "PUT",
+        "request_body_schema": "updateProfileSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: UserResponse }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed"
+          },
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "User not found"
+          }
+        ],
+        "delegates_to": "profileService.updateProfile",
+        "auth_required": true,
+        "allowed_roles": ["SELLER", "BUYER"]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/users/me/password",
+        "file_path": "src/app/api/users/me/password/route.ts",
+        "handler_function": "PUT",
+        "request_body_schema": "changePasswordSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'Password changed successfully' } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed — password too short"
+          },
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated or current password incorrect"
+          }
+        ],
+        "delegates_to": "profileService.changePassword",
+        "auth_required": true,
+        "allowed_roles": ["SELLER", "BUYER"]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/users/me/email",
+        "file_path": "src/app/api/users/me/email/route.ts",
+        "handler_function": "PUT",
+        "request_body_schema": "changeEmailSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { user: UserResponse, message: 'Verification email sent to new address' } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed — invalid email"
+          },
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated or current password incorrect"
+          },
+          {
+            "status_code": 409,
+            "error_code": "CONFLICT",
+            "description": "New email already taken"
+          }
+        ],
+        "delegates_to": "profileService.changeEmail",
+        "auth_required": true,
+        "allowed_roles": ["SELLER", "BUYER"]
+      },
+      {
+        "method": "GET",
+        "path": "/api/addresses",
+        "file_path": "src/app/api/addresses/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { items: Address[] } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          }
+        ],
+        "delegates_to": "addressService.findByUserId",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "POST",
+        "path": "/api/addresses",
+        "file_path": "src/app/api/addresses/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "createAddressSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: Address }",
+          "status_code": 201
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed"
+          },
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          }
+        ],
+        "delegates_to": "addressService.create",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "GET",
+        "path": "/api/addresses/:id",
+        "file_path": "src/app/api/addresses/[id]/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: Address }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "Address not found or does not belong to this user"
+          }
+        ],
+        "delegates_to": "addressService.findById",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/addresses/:id",
+        "file_path": "src/app/api/addresses/[id]/route.ts",
+        "handler_function": "PUT",
+        "request_body_schema": "updateAddressSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: Address }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed"
+          },
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "Address not found or does not belong to this user"
+          }
+        ],
+        "delegates_to": "addressService.update",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/addresses/:id",
+        "file_path": "src/app/api/addresses/[id]/route.ts",
+        "handler_function": "DELETE",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: null }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "Address not found or does not belong to this user"
+          }
+        ],
+        "delegates_to": "addressService.delete",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/addresses/:id/default",
+        "file_path": "src/app/api/addresses/[id]/default/route.ts",
+        "handler_function": "PATCH",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: Address }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "Address not found or does not belong to this user"
+          }
+        ],
+        "delegates_to": "addressService.setDefault",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "GET",
+        "path": "/api/store-config",
+        "file_path": "src/app/api/store-config/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: StoreConfig }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "StoreConfig not found"
+          }
+        ],
+        "delegates_to": "storeConfigService.get",
+        "auth_required": true,
+        "allowed_roles": ["SELLER"]
+      },
+      {
+        "method": "GET",
+        "path": "/api/store-config/public",
+        "file_path": "src/app/api/store-config/public/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: PublicStoreConfig }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "StoreConfig not found"
+          }
+        ],
+        "delegates_to": "storeConfigService.getPublic",
+        "auth_required": true,
+        "allowed_roles": ["BUYER", "SELLER"]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/store-config",
+        "file_path": "src/app/api/store-config/route.ts",
+        "handler_function": "PUT",
+        "request_body_schema": "updateStoreConfigSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: StoreConfig }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed"
+          },
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 403,
+            "error_code": "FORBIDDEN",
+            "description": "Only seller can update store config"
+          }
+        ],
+        "delegates_to": "storeConfigService.updateStore",
+        "auth_required": true,
+        "allowed_roles": ["SELLER"]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/store-config/payment",
+        "file_path": "src/app/api/store-config/payment/route.ts",
+        "handler_function": "PUT",
+        "request_body_schema": "updatePaymentConfigSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: StoreConfig }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed"
+          },
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          },
+          {
+            "status_code": 403,
+            "error_code": "FORBIDDEN",
+            "description": "Only seller can update payment config"
+          }
+        ],
+        "delegates_to": "storeConfigService.updatePaymentConfig",
+        "auth_required": true,
+        "allowed_roles": ["SELLER"]
+      },
+      {
+        "method": "GET",
+        "path": "/api/store-config/bank-details",
+        "file_path": "src/app/api/store-config/bank-details/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: BankDetails | null }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Not authenticated"
+          }
+        ],
+        "delegates_to": "storeConfigService.getBankDetails",
+        "auth_required": true,
+        "allowed_roles": ["BUYER", "SELLER"]
+      }
+    ]
+  },
+
+  "frontend": {
+    "screens": [
+      {
+        "screen_name": "Buyer Profile Screen",
+        "screen_type": "settings",
+        "route": "/settings/profile",
+        "file_path": "src/app/settings/profile/page.tsx",
+        "page_name": "BuyerProfilePage",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"],
+        "components": [
+          {
+            "component_name": "ProfileForm",
+            "file_path": "src/client/components/settings/ProfileForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "user",
+                "type": "UserResponse",
+                "description": "Current user data to pre-fill the form"
+              },
+              {
+                "name": "onSuccess",
+                "type": "(user: UserResponse) => void",
+                "description": "Callback fired after profile is updated"
+              }
+            ],
+            "description": "Editable form with name, business name, and phone fields. Pre-filled with current values. Shows inline validation errors and success toast on save."
+          },
+          {
+            "component_name": "ChangePasswordForm",
+            "file_path": "src/client/components/settings/ChangePasswordForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "onSuccess",
+                "type": "() => void",
+                "description": "Callback fired after password is changed"
+              }
+            ],
+            "description": "Form with current password, new password, and confirm new password fields. Shows inline validation and error for incorrect current password."
+          },
+          {
+            "component_name": "ChangeEmailForm",
+            "file_path": "src/client/components/settings/ChangeEmailForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "currentEmail",
+                "type": "string",
+                "description": "User's current email displayed as read-only reference"
+              },
+              {
+                "name": "onSuccess",
+                "type": "(user: UserResponse) => void",
+                "description": "Callback fired after email change request is submitted"
+              }
+            ],
+            "description": "Form with new email and current password fields. On success, shows message about verification email sent to new address."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useProfile",
+            "file_path": "src/client/hooks/useProfile.ts",
+            "consumes_endpoints": ["GET /api/users/me", "PUT /api/users/me/profile"],
+            "returns": "{ user: UserResponse | null, isLoading: boolean, error: string | null, updateProfile: (data: UpdateProfileInput) => Promise<void> }",
+            "description": "Fetches current user profile and provides update function"
+          },
+          {
+            "hook_name": "useChangePassword",
+            "file_path": "src/client/hooks/useChangePassword.ts",
+            "consumes_endpoints": ["PUT /api/users/me/password"],
+            "returns": "{ changePassword: (data: ChangePasswordInput) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Handles password change API call"
+          },
+          {
+            "hook_name": "useChangeEmail",
+            "file_path": "src/client/hooks/useChangeEmail.ts",
+            "consumes_endpoints": ["PUT /api/users/me/email"],
+            "returns": "{ changeEmail: (data: ChangeEmailInput) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Handles email change API call"
+          }
+        ],
+        "validation_schemas": ["updateProfileSchema", "changePasswordSchema", "changeEmailSchema"],
+        "user_interactions": [
+          "Edit name, business name, phone",
+          "Save profile changes",
+          "Enter current and new password to change password",
+          "Enter new email and current password to change email"
+        ],
+        "states": {
+          "loading": "Form skeleton placeholders while user data loads",
+          "empty": "Not applicable — user always has profile data",
+          "error": "Inline field errors for validation; banner error for API failures"
+        }
+      },
+      {
+        "screen_name": "Address Book Screen",
+        "screen_type": "data-table",
+        "route": "/settings/addresses",
+        "file_path": "src/app/settings/addresses/page.tsx",
+        "page_name": "AddressBookPage",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"],
+        "components": [
+          {
+            "component_name": "AddressList",
+            "file_path": "src/client/components/settings/AddressList.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "addresses",
+                "type": "Address[]",
+                "description": "List of saved addresses"
+              },
+              {
+                "name": "onEdit",
+                "type": "(id: string) => void",
+                "description": "Opens edit modal/form for the address"
+              },
+              {
+                "name": "onDelete",
+                "type": "(id: string) => void",
+                "description": "Triggers delete with confirmation"
+              },
+              {
+                "name": "onSetDefault",
+                "type": "(id: string) => void",
+                "description": "Sets the address as default"
+              }
+            ],
+            "description": "Displays saved addresses as cards with label, full address, phone, and a default badge. Each card has Edit, Delete, and Set as Default action buttons."
+          },
+          {
+            "component_name": "AddressFormModal",
+            "file_path": "src/client/components/settings/AddressFormModal.tsx",
+            "type": "modal",
+            "props": [
+              {
+                "name": "isOpen",
+                "type": "boolean",
+                "description": "Controls modal visibility"
+              },
+              {
+                "name": "address",
+                "type": "Address | null",
+                "description": "Existing address for edit mode, null for create mode"
+              },
+              {
+                "name": "onClose",
+                "type": "() => void",
+                "description": "Closes the modal"
+              },
+              {
+                "name": "onSave",
+                "type": "(data: CreateAddressInput | UpdateAddressInput) => void",
+                "description": "Submits the address form"
+              }
+            ],
+            "description": "Modal form for creating or editing an address. Fields: label, recipient name, phone, address lines, city, state, pincode, and set-as-default checkbox. Pre-filled in edit mode."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useAddresses",
+            "file_path": "src/client/hooks/useAddresses.ts",
+            "consumes_endpoints": [
+              "GET /api/addresses",
+              "POST /api/addresses",
+              "PUT /api/addresses/:id",
+              "DELETE /api/addresses/:id",
+              "PATCH /api/addresses/:id/default"
+            ],
+            "returns": "{ addresses: Address[], isLoading: boolean, error: string | null, createAddress: (data: CreateAddressInput) => Promise<void>, updateAddress: (id: string, data: UpdateAddressInput) => Promise<void>, deleteAddress: (id: string) => Promise<void>, setDefault: (id: string) => Promise<void>, refetch: () => void }",
+            "description": "Manages CRUD operations for buyer addresses with optimistic UI updates"
+          }
+        ],
+        "validation_schemas": ["createAddressSchema", "updateAddressSchema"],
+        "user_interactions": [
+          "View list of saved addresses",
+          "Click Add New Address to open create modal",
+          "Edit an existing address",
+          "Delete an address with confirmation prompt",
+          "Set an address as default"
+        ],
+        "states": {
+          "loading": "Skeleton card placeholders while addresses load",
+          "empty": "Illustration with 'No addresses saved yet' message and Add Address CTA button",
+          "error": "Error banner with retry button"
+        }
+      },
+      {
+        "screen_name": "Seller Profile Screen",
+        "screen_type": "settings",
+        "route": "/seller/settings/profile",
+        "file_path": "src/app/seller/settings/profile/page.tsx",
+        "page_name": "SellerProfilePage",
+        "auth_required": true,
+        "allowed_roles": ["SELLER"],
+        "components": [
+          {
+            "component_name": "ProfileForm",
+            "file_path": "src/client/components/settings/ProfileForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "user",
+                "type": "UserResponse",
+                "description": "Current seller data to pre-fill the form"
+              },
+              {
+                "name": "onSuccess",
+                "type": "(user: UserResponse) => void",
+                "description": "Callback fired after profile is updated"
+              }
+            ],
+            "description": "Reuses the same ProfileForm component from Buyer Profile — editable name, business name, phone. Seller also sees ChangePasswordForm and ChangeEmailForm."
+          },
+          {
+            "component_name": "ChangePasswordForm",
+            "file_path": "src/client/components/settings/ChangePasswordForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "onSuccess",
+                "type": "() => void",
+                "description": "Callback fired after password is changed"
+              }
+            ],
+            "description": "Reused from Buyer Profile — same password change form"
+          },
+          {
+            "component_name": "ChangeEmailForm",
+            "file_path": "src/client/components/settings/ChangeEmailForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "currentEmail",
+                "type": "string",
+                "description": "Seller's current email"
+              },
+              {
+                "name": "onSuccess",
+                "type": "(user: UserResponse) => void",
+                "description": "Callback fired after email change"
+              }
+            ],
+            "description": "Reused from Buyer Profile — same email change form"
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useProfile",
+            "file_path": "src/client/hooks/useProfile.ts",
+            "consumes_endpoints": ["GET /api/users/me", "PUT /api/users/me/profile"],
+            "returns": "{ user: UserResponse | null, isLoading: boolean, error: string | null, updateProfile: (data: UpdateProfileInput) => Promise<void> }",
+            "description": "Reuses the same useProfile hook — role-agnostic"
+          },
+          {
+            "hook_name": "useChangePassword",
+            "file_path": "src/client/hooks/useChangePassword.ts",
+            "consumes_endpoints": ["PUT /api/users/me/password"],
+            "returns": "{ changePassword: (data: ChangePasswordInput) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Reused from Buyer Profile"
+          },
+          {
+            "hook_name": "useChangeEmail",
+            "file_path": "src/client/hooks/useChangeEmail.ts",
+            "consumes_endpoints": ["PUT /api/users/me/email"],
+            "returns": "{ changeEmail: (data: ChangeEmailInput) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Reused from Buyer Profile"
+          }
+        ],
+        "validation_schemas": ["updateProfileSchema", "changePasswordSchema", "changeEmailSchema"],
+        "user_interactions": [
+          "Edit name, business name, phone",
+          "Save profile changes",
+          "Change password",
+          "Change email"
+        ],
+        "states": {
+          "loading": "Form skeleton placeholders while user data loads",
+          "empty": "Not applicable",
+          "error": "Inline field errors for validation; banner error for API failures"
+        }
+      },
+      {
+        "screen_name": "Store Configuration Screen",
+        "screen_type": "settings",
+        "route": "/seller/settings/store",
+        "file_path": "src/app/seller/settings/store/page.tsx",
+        "page_name": "StoreConfigPage",
+        "auth_required": true,
+        "allowed_roles": ["SELLER"],
+        "components": [
+          {
+            "component_name": "StoreConfigForm",
+            "file_path": "src/client/components/settings/StoreConfigForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "config",
+                "type": "StoreConfig",
+                "description": "Current store configuration to pre-fill the form"
+              },
+              {
+                "name": "onSuccess",
+                "type": "(config: StoreConfig) => void",
+                "description": "Callback fired after config is saved"
+              }
+            ],
+            "description": "Form with store name, description (textarea), store logo upload, return policy (rich text / textarea), contact email, and contact phone. Pre-filled with current values. Logo field shows current logo preview with option to replace."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useStoreConfig",
+            "file_path": "src/client/hooks/useStoreConfig.ts",
+            "consumes_endpoints": ["GET /api/store-config", "PUT /api/store-config"],
+            "returns": "{ config: StoreConfig | null, isLoading: boolean, error: string | null, updateConfig: (data: UpdateStoreConfigInput) => Promise<void> }",
+            "description": "Fetches and updates the seller's store configuration"
+          }
+        ],
+        "validation_schemas": ["updateStoreConfigSchema"],
+        "user_interactions": [
+          "Edit store name and description",
+          "Upload or replace store logo",
+          "Edit return policy text",
+          "Edit contact email and phone",
+          "Save all changes"
+        ],
+        "states": {
+          "loading": "Form skeleton placeholders while config loads",
+          "empty": "Not applicable — seed data ensures config always exists",
+          "error": "Banner error with retry button for load failure; inline errors for validation"
+        }
+      },
+      {
+        "screen_name": "Payment Configuration Screen",
+        "screen_type": "settings",
+        "route": "/seller/settings/payment",
+        "file_path": "src/app/seller/settings/payment/page.tsx",
+        "page_name": "PaymentConfigPage",
+        "auth_required": true,
+        "allowed_roles": ["SELLER"],
+        "components": [
+          {
+            "component_name": "BankDetailsForm",
+            "file_path": "src/client/components/settings/BankDetailsForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "config",
+                "type": "StoreConfig",
+                "description": "Current config with bank details to pre-fill"
+              },
+              {
+                "name": "onSuccess",
+                "type": "(config: StoreConfig) => void",
+                "description": "Callback fired after bank details are saved"
+              }
+            ],
+            "description": "Form section for bank account details: account holder name, account number, IFSC code, and UPI ID. These details are shown to buyers who choose bank transfer payment."
+          },
+          {
+            "component_name": "PaymentGatewayForm",
+            "file_path": "src/client/components/settings/PaymentGatewayForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "config",
+                "type": "StoreConfig",
+                "description": "Current config with gateway details to pre-fill"
+              },
+              {
+                "name": "onSuccess",
+                "type": "(config: StoreConfig) => void",
+                "description": "Callback fired after gateway config is saved"
+              }
+            ],
+            "description": "Form section for payment gateway configuration: provider selector (Razorpay or Stripe), Key ID, and Key Secret. Secret field is masked with option to reveal."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "usePaymentConfig",
+            "file_path": "src/client/hooks/usePaymentConfig.ts",
+            "consumes_endpoints": ["GET /api/store-config", "PUT /api/store-config/payment"],
+            "returns": "{ config: StoreConfig | null, isLoading: boolean, error: string | null, updatePaymentConfig: (data: UpdatePaymentConfigInput) => Promise<void> }",
+            "description": "Fetches store config and provides payment config update function"
+          }
+        ],
+        "validation_schemas": ["updatePaymentConfigSchema"],
+        "user_interactions": [
+          "Enter bank account details (name, number, IFSC, UPI)",
+          "Select payment gateway provider",
+          "Enter gateway API keys",
+          "Save bank details",
+          "Save gateway configuration"
+        ],
+        "states": {
+          "loading": "Form skeleton placeholders while config loads",
+          "empty": "Not applicable — seed data ensures config exists; empty fields show placeholder text",
+          "error": "Banner error with retry for load failure; inline errors for validation"
+        }
+      }
+    ]
+  }
+}

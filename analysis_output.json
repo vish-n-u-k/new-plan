@@ -1,0 +1,293 @@
+{
+  "app_name": "B2B Wholesale Clothing Marketplace",
+  "app_description": "An online platform for selling clothing inventory in bulk to other businesses with minimum order requirements",
+  "platform": "web",
+  "user_roles": ["seller", "buyer"],
+  "global_rules": {
+    "authentication_required": "All pages except Login, Registration, and Forgot Password require authentication. Unauthenticated users are redirected to the Login screen.",
+    "minimum_order_quantity": 10
+  },
+  "modules": [
+    {
+      "module_name": "Authentication & Registration",
+      "module_description": "Handles user signup, login, and session management for both buyers and seller",
+      "module_business_logic": "Buyers register with email/password and a basic business name. Seller account is pre-created. Future: support seller registration with approval flow.",
+      "screens": [
+        {
+          "name": "Login Screen",
+          "requirement": "Buyer or Seller logs in with email and password. Show inline validation errors. Role-based redirect after login — buyer goes to catalog, seller goes to dashboard."
+        },
+        {
+          "name": "Buyer Registration Screen",
+          "requirement": "Buyer signs up with email, password, business name, and phone number. Email verification sent on submit."
+        },
+        {
+          "name": "Forgot Password Screen",
+          "requirement": "User enters email, receives a password reset link, and sets a new password."
+        }
+      ],
+      "features": [
+        "Email verification on signup",
+        "Password reset via email link",
+        "Session persistence — stay logged in across browser sessions",
+        "Role-based redirect after login (buyer to catalog, seller to dashboard)"
+      ]
+    },
+    {
+      "module_name": "Product Catalog",
+      "module_description": "The main browsing experience where buyers discover and filter through clothing inventory",
+      "module_business_logic": "Only products with available stock >= 10 (MOQ) are displayed. Out-of-stock or low-stock items are hidden or marked unavailable.",
+      "screens": [
+        {
+          "name": "Catalog Listing Screen",
+          "requirement": "Displays products as a grid with thumbnail, name, price per unit, and MOQ badge. Filterable by category (Men/Women/Kids), sub-category, size, color, and price range. Supports search by product name or keyword. Pagination or infinite scroll for large inventories."
+        },
+        {
+          "name": "Product Detail Screen",
+          "requirement": "Shows multiple product images, name, description, price per unit, available sizes and colors, stock availability, and MOQ (10). Buyer selects variant (size + color) and quantity (min 10). Add to Cart button."
+        }
+      ],
+      "features": [
+        "Search bar with keyword matching",
+        "Filters: category, size, color, price range",
+        "Sort by: price low-high, price high-low, newest first",
+        "MOQ enforcement — quantity selector does not allow below 10",
+        "Stock visibility — show available quantity or Limited Stock indicator",
+        "Responsive grid layout for different screen sizes"
+      ]
+    },
+    {
+      "module_name": "Cart & Checkout",
+      "module_description": "Allows buyers to review selected items, adjust quantities, and place an order with their chosen payment method",
+      "module_business_logic": "Each line item in the cart must meet the MOQ of 10. Cart persists across sessions for logged-in users (server-side). Buyer selects payment method at checkout — online payment, bank transfer, or COD.",
+      "screens": [
+        {
+          "name": "Cart Screen",
+          "requirement": "Lists all added items with product image, name, variant (size/color), unit price, quantity, and line total. Buyer can update quantity (min 10) or remove items. Shows subtotal, shipping estimate, and order total. Proceed to Checkout button disabled if cart is empty."
+        },
+        {
+          "name": "Checkout Screen",
+          "requirement": "Buyer enters or selects a shipping address. Selects payment method: online payment gateway, bank transfer, or COD. Shows order summary with itemized breakdown, shipping cost, and grand total. Place Order button to confirm."
+        },
+        {
+          "name": "Order Confirmation Screen",
+          "requirement": "Displays order number, items ordered, total amount, selected payment method, and estimated delivery. If bank transfer is selected, shows bank account details and instructions. Option to download order summary as PDF."
+        }
+      ],
+      "features": [
+        "MOQ validation — prevents checkout if any item is below 10",
+        "Quantity update with real-time price recalculation",
+        "Shipping cost estimation based on delivery address and weight",
+        "Multiple shipping addresses — buyer can save and manage addresses",
+        "Payment method selection with method-specific flows",
+        "Order summary PDF generation"
+      ]
+    },
+    {
+      "module_name": "Order Management (Buyer Side)",
+      "module_description": "Lets buyers track their orders, view order history, and manage returns or cancellations",
+      "module_business_logic": "Orders can only be cancelled before they are shipped. Return/refund requests can be raised within 7 days of delivery. Order status flow: Placed → Confirmed → Shipped → Delivered.",
+      "screens": [
+        {
+          "name": "My Orders Screen",
+          "requirement": "Lists all past and active orders with order number, date, total amount, item count, and current status. Filterable by status (active, delivered, cancelled). Clicking an order opens the detail view."
+        },
+        {
+          "name": "Order Detail Screen (Buyer)",
+          "requirement": "Shows full order breakdown — items with variants, quantities, unit price, line totals. Displays shipping address, payment method, and payment status. Shows live tracking link from Delhivery. Cancel order button if status is before Shipped."
+        },
+        {
+          "name": "Return / Refund Request Screen",
+          "requirement": "Buyer selects items to return, provides a reason (defective, wrong item, quality issue), and uploads photos if needed. Submits request for seller review."
+        }
+      ],
+      "features": [
+        "Real-time order status updates",
+        "Delhivery tracking link integration on order detail",
+        "Cancel order with confirmation prompt (only pre-shipment)",
+        "Return request submission with photo upload",
+        "Order history search by order number or date range"
+      ]
+    },
+    {
+      "module_name": "Seller Dashboard",
+      "module_description": "Central hub showing sales overview and key metrics with navigation to product management",
+      "module_business_logic": "Only accessible by users with the seller role. Displays real-time metrics. Future: supports multiple sellers each seeing only their own data.",
+      "screens": [
+        {
+          "name": "Dashboard Home Screen",
+          "requirement": "Shows key metrics: total revenue, total orders, pending orders, low-stock alerts. Sales chart with daily/weekly/monthly toggle. Lists 5 most recent orders with status. A Manage Products button that navigates to the Product Management Screen."
+        },
+        {
+          "name": "Product Management Screen",
+          "requirement": "Lists all products in a table with columns: product image, name, category, price, discount (if any), stock, status (active/inactive). Each row has action buttons: Edit, Set Discount, View Orders for that product. Top of the page has an Add New Product button. Searchable and filterable by category, stock status, discount status."
+        },
+        {
+          "name": "Set Discount Modal",
+          "requirement": "Opens on a product — seller enters discount type (percentage or flat amount) and discount value, optionally a start and end date. Shows preview of original price vs discounted price. Save applies it immediately. Option to remove existing discount."
+        }
+      ],
+      "features": [
+        "Revenue and order count summary cards",
+        "Sales trend chart with time range toggle (7 days, 30 days, 90 days)",
+        "Low-stock alerts for products approaching MOQ threshold",
+        "Recent orders list with click-through to order detail",
+        "Full product list with inline actions",
+        "Product-level discount management (percentage or flat, optional date range)",
+        "Filter products by category, stock level, discount status",
+        "Search products by name"
+      ]
+    },
+    {
+      "module_name": "Inventory & Product Management",
+      "module_description": "Allows seller to add, edit, and manage clothing products including variants, stock levels, and images",
+      "module_business_logic": "Every product must have at least one variant (size + color). Stock is tracked per variant. Products with total stock below 10 across all variants are auto-flagged as Low Stock. Products can be set to active/inactive — inactive products are hidden from buyers.",
+      "screens": [
+        {
+          "name": "Add Product Screen",
+          "requirement": "Form with fields: product name, description, category (Men/Women/Kids), images (upload multiple, drag to reorder, first image is thumbnail). Variants section — seller adds rows of size + color + price per unit + stock quantity. Save as draft or publish immediately."
+        },
+        {
+          "name": "Edit Product Screen",
+          "requirement": "Same form as Add Product, pre-filled with existing data. Seller can update any field, add/remove variants, update stock quantities. Changes reflect immediately for buyers on save."
+        }
+      ],
+      "features": [
+        "Multi-image upload with drag-to-reorder and thumbnail selection",
+        "Variant management — add multiple size/color combinations each with own price and stock",
+        "Bulk stock update — quickly adjust stock for multiple variants at once",
+        "Product status toggle (active/inactive) without deleting",
+        "Category assignment (Men, Women, Kids)",
+        "Low stock warning indicator on products nearing MOQ threshold"
+      ]
+    },
+    {
+      "module_name": "Order Management (Seller Side)",
+      "module_description": "Lets seller view, process, and fulfill incoming orders from buyers",
+      "module_business_logic": "New orders come in as Placed. Seller confirms or rejects them. Confirmed orders move to Processing for shipping label generation via Delhivery. Once shipped, tracking is auto-shared with the buyer. Return/refund requests land here for seller review.",
+      "screens": [
+        {
+          "name": "Orders List Screen (Seller)",
+          "requirement": "Table of all orders with columns: order number, buyer name, date, item count, total amount, payment method, payment status, order status. Filterable by status (Placed, Confirmed, Shipped, Delivered, Cancelled, Returned). Sortable by date and amount. Search by order number or buyer name."
+        },
+        {
+          "name": "Order Detail Screen (Seller)",
+          "requirement": "Full breakdown of the order — items, variants, quantities, prices. Buyer details: business name, email, phone, shipping address. Payment info: method and status. Action buttons based on current status: Confirm Order, Reject Order (with reason), Ship Order (triggers Delhivery label generation), Mark as Delivered."
+        },
+        {
+          "name": "Return Requests Screen",
+          "requirement": "Lists all return/refund requests with order number, buyer name, reason, photos uploaded by buyer, and request date. Seller can Approve (triggers refund flow) or Reject (with reason sent to buyer)."
+        }
+      ],
+      "features": [
+        "Order status flow: Placed → Confirmed → Processing → Shipped → Delivered",
+        "Reject order with mandatory reason sent to buyer via notification",
+        "Delhivery shipping label generation from order detail",
+        "Tracking number auto-attached to order once shipped",
+        "Return request approval/rejection workflow",
+        "Payment status visibility for bank transfer and COD orders"
+      ]
+    },
+    {
+      "module_name": "Shipping & Logistics",
+      "module_description": "Integrates with Delhivery to handle shipment creation, label generation, and live tracking",
+      "module_business_logic": "Shipping cost is calculated based on package weight and delivery pincode. Shipment is created only after seller confirms the order. Tracking updates are pulled from Delhivery and reflected on both buyer and seller order screens.",
+      "screens": [
+        {
+          "name": "Shipping Configuration Screen",
+          "requirement": "Seller enters Delhivery API credentials and warehouse/pickup address. Option to set default package weight per item for auto-calculation. Toggle to enable/disable COD for specific pincodes or regions."
+        }
+      ],
+      "features": [
+        "Delhivery API integration for shipment creation and label generation",
+        "Auto shipping cost calculation at checkout based on weight and destination pincode",
+        "Pickup request scheduling — trigger Delhivery pickup from warehouse",
+        "Live tracking status sync — order status auto-updates as Delhivery status changes",
+        "Tracking link shared with buyer on order detail and via email notification",
+        "Pincode serviceability check — validate at checkout whether Delhivery delivers to buyer pincode",
+        "Shipping label PDF download from seller order detail"
+      ]
+    },
+    {
+      "module_name": "Payments",
+      "module_description": "Handles payment processing across online gateway, bank transfer, and COD, and tracks payment status for every order",
+      "module_business_logic": "Online payments processed via Razorpay or Stripe. Bank transfer orders marked Payment Pending until seller manually confirms receipt. COD orders marked Payment Pending until delivery is confirmed.",
+      "screens": [
+        {
+          "name": "Payment Gateway Redirect (Buyer)",
+          "requirement": "On selecting online payment at checkout, buyer is redirected to payment gateway. On success — order is placed and marked Paid. On failure — buyer is returned to checkout with an error message and can retry."
+        },
+        {
+          "name": "Bank Transfer Instructions (Buyer)",
+          "requirement": "Displayed after placing a bank transfer order. Shows seller bank account details (account number, IFSC, UPI ID). Buyer can upload payment proof (screenshot/receipt) for faster confirmation."
+        },
+        {
+          "name": "Payment Management Screen (Seller)",
+          "requirement": "Lists all orders with payment columns: order number, buyer name, amount, payment method, payment status (Paid, Pending, Failed). Filterable by method and status. For bank transfer orders — view uploaded payment proof and Confirm Payment button. COD payments auto-update to Paid on delivery confirmation."
+        }
+      ],
+      "features": [
+        "Payment gateway integration (Razorpay or Stripe)",
+        "Payment status tracking per order: Paid, Pending, Failed",
+        "Bank transfer manual confirmation workflow with proof upload",
+        "COD payment auto-reconciliation on delivery",
+        "Payment failure handling with retry option",
+        "Refund processing for approved returns (back to original payment method or store credit)",
+        "Payment history visible to both buyer and seller on respective order screens"
+      ]
+    },
+    {
+      "module_name": "Notifications",
+      "module_description": "Keeps both buyers and seller informed about order updates, payments, and important events via in-app and email notifications",
+      "module_business_logic": "Critical notifications (order placed, payment confirmed, shipment updates) sent via both email and in-app. Low-priority notifications are in-app only.",
+      "screens": [
+        {
+          "name": "Notifications Screen",
+          "requirement": "Lists all notifications in reverse chronological order with icon, title, message preview, and timestamp. Unread notifications are visually distinct (bold/highlighted). Clicking a notification navigates to the relevant page. Mark all as read button at the top."
+        }
+      ],
+      "features": [
+        "In-app notification bell with unread count badge",
+        "Email notifications for critical events",
+        "Read/unread status tracking",
+        "Click-through navigation to relevant screen",
+        "Buyer notifications: registration success, order placed, order confirmed, order rejected (with reason), order shipped (with tracking), order delivered, return approved/rejected, refund processed",
+        "Seller notifications: new order received, payment confirmed (bank transfer), COD payment collected, new return request, low stock alert"
+      ]
+    },
+    {
+      "module_name": "Settings & Account Management",
+      "module_description": "Lets both buyers and seller manage their account details, preferences, and app configurations",
+      "module_business_logic": "Each role sees only their relevant settings. Seller settings include store branding and payment configuration.",
+      "screens": [
+        {
+          "name": "Buyer Profile Screen",
+          "requirement": "Buyer can view and edit: business name, email, phone number, and password."
+        },
+        {
+          "name": "Address Book Screen (Buyer)",
+          "requirement": "Buyer can add, edit, and delete saved shipping addresses. One address can be set as default."
+        },
+        {
+          "name": "Seller Profile Screen",
+          "requirement": "Seller can view and edit: business name, email, phone number, password, and store logo."
+        },
+        {
+          "name": "Store Configuration Screen (Seller)",
+          "requirement": "Seller sets store name, description, return policy text (displayed to buyers), and contact information."
+        },
+        {
+          "name": "Payment Configuration Screen (Seller)",
+          "requirement": "Seller enters bank account details (shown to buyers for bank transfer) and payment gateway API keys (Razorpay or Stripe)."
+        }
+      ],
+      "features": [
+        "Password change with current password verification",
+        "Email update with re-verification",
+        "Multiple saved addresses for buyers",
+        "Seller store branding (name, logo, description)",
+        "Centralized configuration for payment and return policy"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,451 @@
+{
+  "app_name": "B2B Wholesale Clothing Marketplace",
+  "app_description": "An online platform for selling clothing inventory in bulk to other businesses with minimum order requirements",
+  "architecture_version": "1.0",
+  "tech_stack": {
+    "summary": "Next.js 14 App Router, React 18, TypeScript 5.5 (strict), Prisma 5 with PostgreSQL, Zod 3 validation, ESLint 9, Prettier, dependency-cruiser for architecture enforcement, Vitest for testing, Husky + lint-staged for pre-commit hooks"
+  },
+  "user_roles": [
+    {
+      "role_name": "SELLER",
+      "description": "Single seller who manages the entire store — adds products, manages inventory, processes orders, configures shipping and payments, and views sales metrics",
+      "accessible_modules": [
+        "Authentication & Registration",
+        "Seller Dashboard",
+        "Inventory & Product Management",
+        "Order Management (Seller Side)",
+        "Shipping & Logistics",
+        "Payments",
+        "Notifications",
+        "Settings & Account Management"
+      ]
+    },
+    {
+      "role_name": "BUYER",
+      "description": "Business customers who browse products, place bulk orders (minimum 10 units), track orders, and manage returns",
+      "accessible_modules": [
+        "Authentication & Registration",
+        "Product Catalog",
+        "Cart & Checkout",
+        "Order Management (Buyer Side)",
+        "Payments",
+        "Notifications",
+        "Settings & Account Management"
+      ]
+    }
+  ],
+  "global_entities": [
+    {
+      "model_name": "User",
+      "description": "Core user account with role-based access (SELLER or BUYER). Extended from skeleton template with auth fields.",
+      "defined_in_module": "Authentication & Registration",
+      "used_by_modules": [
+        "Authentication & Registration",
+        "Product Catalog",
+        "Cart & Checkout",
+        "Order Management (Buyer Side)",
+        "Seller Dashboard",
+        "Inventory & Product Management",
+        "Order Management (Seller Side)",
+        "Payments",
+        "Notifications",
+        "Settings & Account Management"
+      ]
+    },
+    {
+      "model_name": "Product",
+      "description": "Clothing product with name, description, category, images, and active/inactive status",
+      "defined_in_module": "Inventory & Product Management",
+      "used_by_modules": [
+        "Product Catalog",
+        "Cart & Checkout",
+        "Order Management (Buyer Side)",
+        "Seller Dashboard",
+        "Inventory & Product Management",
+        "Order Management (Seller Side)"
+      ]
+    },
+    {
+      "model_name": "ProductVariant",
+      "description": "Size + color combination for a product with its own price and stock quantity",
+      "defined_in_module": "Inventory & Product Management",
+      "used_by_modules": [
+        "Product Catalog",
+        "Cart & Checkout",
+        "Order Management (Buyer Side)",
+        "Inventory & Product Management",
+        "Order Management (Seller Side)"
+      ]
+    },
+    {
+      "model_name": "Order",
+      "description": "A buyer's bulk order containing line items, shipping address, payment info, and status tracking",
+      "defined_in_module": "Cart & Checkout",
+      "used_by_modules": [
+        "Cart & Checkout",
+        "Order Management (Buyer Side)",
+        "Seller Dashboard",
+        "Order Management (Seller Side)",
+        "Shipping & Logistics",
+        "Payments",
+        "Notifications"
+      ]
+    },
+    {
+      "model_name": "OrderItem",
+      "description": "Individual line item in an order linking to a product variant with quantity and unit price",
+      "defined_in_module": "Cart & Checkout",
+      "used_by_modules": [
+        "Cart & Checkout",
+        "Order Management (Buyer Side)",
+        "Order Management (Seller Side)"
+      ]
+    },
+    {
+      "model_name": "CartItem",
+      "description": "An item in a buyer's persistent server-side cart with variant, quantity, and unit price",
+      "defined_in_module": "Cart & Checkout",
+      "used_by_modules": [
+        "Cart & Checkout",
+        "Product Catalog"
+      ]
+    },
+    {
+      "model_name": "Address",
+      "description": "Shipping address saved by a buyer, one can be marked as default",
+      "defined_in_module": "Settings & Account Management",
+      "used_by_modules": [
+        "Cart & Checkout",
+        "Order Management (Buyer Side)",
+        "Settings & Account Management"
+      ]
+    },
+    {
+      "model_name": "Notification",
+      "description": "In-app notification with read/unread status and deep-link to relevant page",
+      "defined_in_module": "Notifications",
+      "used_by_modules": [
+        "Notifications"
+      ]
+    },
+    {
+      "model_name": "ReturnRequest",
+      "description": "Return/refund request raised by buyer for delivered orders",
+      "defined_in_module": "Order Management (Buyer Side)",
+      "used_by_modules": [
+        "Order Management (Buyer Side)",
+        "Order Management (Seller Side)",
+        "Payments",
+        "Notifications"
+      ]
+    },
+    {
+      "model_name": "Shipment",
+      "description": "Delhivery shipment record linked to an order with tracking number and status",
+      "defined_in_module": "Shipping & Logistics",
+      "used_by_modules": [
+        "Shipping & Logistics",
+        "Order Management (Buyer Side)",
+        "Order Management (Seller Side)"
+      ]
+    },
+    {
+      "model_name": "Payment",
+      "description": "Payment record for an order tracking method, status, gateway reference, and proof upload",
+      "defined_in_module": "Payments",
+      "used_by_modules": [
+        "Payments",
+        "Cart & Checkout",
+        "Order Management (Buyer Side)",
+        "Order Management (Seller Side)"
+      ]
+    },
+    {
+      "model_name": "Discount",
+      "description": "Product-level discount with type (percentage/flat), value, and optional date range",
+      "defined_in_module": "Seller Dashboard",
+      "used_by_modules": [
+        "Seller Dashboard",
+        "Product Catalog",
+        "Cart & Checkout"
+      ]
+    },
+    {
+      "model_name": "StoreConfig",
+      "description": "Seller store configuration — name, description, return policy, contact info, and payment/shipping credentials",
+      "defined_in_module": "Settings & Account Management",
+      "used_by_modules": [
+        "Settings & Account Management",
+        "Shipping & Logistics",
+        "Payments"
+      ]
+    },
+    {
+      "model_name": "Session",
+      "description": "User session for persistent login across browser sessions",
+      "defined_in_module": "Authentication & Registration",
+      "used_by_modules": [
+        "Authentication & Registration"
+      ]
+    },
+    {
+      "model_name": "PasswordResetToken",
+      "description": "Time-limited token for password reset flow",
+      "defined_in_module": "Authentication & Registration",
+      "used_by_modules": [
+        "Authentication & Registration"
+      ]
+    },
+    {
+      "model_name": "EmailVerificationToken",
+      "description": "Token sent to buyer email for account verification",
+      "defined_in_module": "Authentication & Registration",
+      "used_by_modules": [
+        "Authentication & Registration"
+      ]
+    }
+  ],
+  "enums": [
+    {
+      "enum_name": "Role",
+      "values": ["SELLER", "BUYER"],
+      "defined_in_module": "Authentication & Registration",
+      "used_by_models": ["User"]
+    },
+    {
+      "enum_name": "Category",
+      "values": ["MEN", "WOMEN", "KIDS"],
+      "defined_in_module": "Inventory & Product Management",
+      "used_by_models": ["Product"]
+    },
+    {
+      "enum_name": "ProductStatus",
+      "values": ["ACTIVE", "INACTIVE", "DRAFT"],
+      "defined_in_module": "Inventory & Product Management",
+      "used_by_models": ["Product"]
+    },
+    {
+      "enum_name": "OrderStatus",
+      "values": ["PLACED", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"],
+      "defined_in_module": "Cart & Checkout",
+      "used_by_models": ["Order"]
+    },
+    {
+      "enum_name": "PaymentMethod",
+      "values": ["ONLINE", "BANK_TRANSFER", "COD"],
+      "defined_in_module": "Payments",
+      "used_by_models": ["Order", "Payment"]
+    },
+    {
+      "enum_name": "PaymentStatus",
+      "values": ["PENDING", "PAID", "FAILED", "REFUNDED"],
+      "defined_in_module": "Payments",
+      "used_by_models": ["Payment"]
+    },
+    {
+      "enum_name": "ReturnStatus",
+      "values": ["REQUESTED", "APPROVED", "REJECTED", "REFUND_PROCESSED"],
+      "defined_in_module": "Order Management (Buyer Side)",
+      "used_by_models": ["ReturnRequest"]
+    },
+    {
+      "enum_name": "ReturnReason",
+      "values": ["DEFECTIVE", "WRONG_ITEM", "QUALITY_ISSUE", "OTHER"],
+      "defined_in_module": "Order Management (Buyer Side)",
+      "used_by_models": ["ReturnRequest"]
+    },
+    {
+      "enum_name": "ShipmentStatus",
+      "values": ["PENDING", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "RETURNED"],
+      "defined_in_module": "Shipping & Logistics",
+      "used_by_models": ["Shipment"]
+    },
+    {
+      "enum_name": "DiscountType",
+      "values": ["PERCENTAGE", "FLAT"],
+      "defined_in_module": "Seller Dashboard",
+      "used_by_models": ["Discount"]
+    },
+    {
+      "enum_name": "NotificationType",
+      "values": ["ORDER_PLACED", "ORDER_CONFIRMED", "ORDER_REJECTED", "ORDER_SHIPPED", "ORDER_DELIVERED", "PAYMENT_CONFIRMED", "RETURN_REQUESTED", "RETURN_APPROVED", "RETURN_REJECTED", "REFUND_PROCESSED", "LOW_STOCK", "REGISTRATION_SUCCESS"],
+      "defined_in_module": "Notifications",
+      "used_by_models": ["Notification"]
+    },
+    {
+      "enum_name": "NotificationChannel",
+      "values": ["IN_APP", "EMAIL", "BOTH"],
+      "defined_in_module": "Notifications",
+      "used_by_models": ["Notification"]
+    }
+  ],
+  "modules": [
+    {
+      "module_name": "Authentication & Registration",
+      "file_name": "authentication-registration.json",
+      "depends_on_modules": []
+    },
+    {
+      "module_name": "Settings & Account Management",
+      "file_name": "settings-account-management.json",
+      "depends_on_modules": ["Authentication & Registration"]
+    },
+    {
+      "module_name": "Inventory & Product Management",
+      "file_name": "inventory-product-management.json",
+      "depends_on_modules": ["Authentication & Registration"]
+    },
+    {
+      "module_name": "Product Catalog",
+      "file_name": "product-catalog.json",
+      "depends_on_modules": ["Authentication & Registration", "Inventory & Product Management"]
+    },
+    {
+      "module_name": "Cart & Checkout",
+      "file_name": "cart-checkout.json",
+      "depends_on_modules": ["Authentication & Registration", "Product Catalog", "Settings & Account Management"]
+    },
+    {
+      "module_name": "Payments",
+      "file_name": "payments.json",
+      "depends_on_modules": ["Authentication & Registration", "Cart & Checkout", "Settings & Account Management"]
+    },
+    {
+      "module_name": "Shipping & Logistics",
+      "file_name": "shipping-logistics.json",
+      "depends_on_modules": ["Authentication & Registration", "Cart & Checkout", "Settings & Account Management"]
+    },
+    {
+      "module_name": "Order Management (Buyer Side)",
+      "file_name": "order-management-buyer-side.json",
+      "depends_on_modules": ["Authentication & Registration", "Cart & Checkout", "Shipping & Logistics", "Payments"]
+    },
+    {
+      "module_name": "Order Management (Seller Side)",
+      "file_name": "order-management-seller-side.json",
+      "depends_on_modules": ["Authentication & Registration", "Cart & Checkout", "Shipping & Logistics", "Payments"]
+    },
+    {
+      "module_name": "Seller Dashboard",
+      "file_name": "seller-dashboard.json",
+      "depends_on_modules": ["Authentication & Registration", "Inventory & Product Management", "Cart & Checkout"]
+    },
+    {
+      "module_name": "Notifications",
+      "file_name": "notifications.json",
+      "depends_on_modules": ["Authentication & Registration", "Cart & Checkout", "Payments", "Shipping & Logistics"]
+    }
+  ],
+  "recommended_build_order": [
+    "Authentication & Registration",
+    "Settings & Account Management",
+    "Inventory & Product Management",
+    "Product Catalog",
+    "Cart & Checkout",
+    "Payments",
+    "Shipping & Logistics",
+    "Order Management (Buyer Side)",
+    "Order Management (Seller Side)",
+    "Seller Dashboard",
+    "Notifications"
+  ],
+  "shared_schemas": [
+    {
+      "schema_name": "loginSchema",
+      "file_path": "src/schemas/auth.schema.ts",
+      "defined_in_module": "Authentication & Registration",
+      "used_in_modules": ["Authentication & Registration"]
+    },
+    {
+      "schema_name": "registerBuyerSchema",
+      "file_path": "src/schemas/auth.schema.ts",
+      "defined_in_module": "Authentication & Registration",
+      "used_in_modules": ["Authentication & Registration"]
+    },
+    {
+      "schema_name": "userSchema",
+      "file_path": "src/schemas/user.schema.ts",
+      "defined_in_module": "Authentication & Registration",
+      "used_in_modules": ["Authentication & Registration", "Settings & Account Management", "Order Management (Seller Side)"]
+    },
+    {
+      "schema_name": "productSchema",
+      "file_path": "src/schemas/product.schema.ts",
+      "defined_in_module": "Inventory & Product Management",
+      "used_in_modules": ["Inventory & Product Management", "Product Catalog", "Seller Dashboard"]
+    },
+    {
+      "schema_name": "orderSchema",
+      "file_path": "src/schemas/order.schema.ts",
+      "defined_in_module": "Cart & Checkout",
+      "used_in_modules": ["Cart & Checkout", "Order Management (Buyer Side)", "Order Management (Seller Side)", "Seller Dashboard"]
+    },
+    {
+      "schema_name": "addressSchema",
+      "file_path": "src/schemas/address.schema.ts",
+      "defined_in_module": "Settings & Account Management",
+      "used_in_modules": ["Settings & Account Management", "Cart & Checkout"]
+    }
+  ],
+  "shared_services": [
+    {
+      "service_name": "authService",
+      "file_path": "src/server/services/auth.service.ts",
+      "defined_in_module": "Authentication & Registration",
+      "used_in_modules": ["Authentication & Registration"]
+    },
+    {
+      "service_name": "userService",
+      "file_path": "src/server/services/user.service.ts",
+      "defined_in_module": "Authentication & Registration",
+      "used_in_modules": ["Authentication & Registration", "Settings & Account Management", "Order Management (Seller Side)", "Notifications"]
+    },
+    {
+      "service_name": "productService",
+      "file_path": "src/server/services/product.service.ts",
+      "defined_in_module": "Inventory & Product Management",
+      "used_in_modules": ["Inventory & Product Management", "Product Catalog", "Seller Dashboard"]
+    },
+    {
+      "service_name": "orderService",
+      "file_path": "src/server/services/order.service.ts",
+      "defined_in_module": "Cart & Checkout",
+      "used_in_modules": ["Cart & Checkout", "Order Management (Buyer Side)", "Order Management (Seller Side)", "Seller Dashboard"]
+    },
+    {
+      "service_name": "notificationService",
+      "file_path": "src/server/services/notification.service.ts",
+      "defined_in_module": "Notifications",
+      "used_in_modules": ["Notifications", "Cart & Checkout", "Order Management (Seller Side)", "Payments"]
+    }
+  ],
+  "shared_components": [
+    {
+      "component_name": "Button",
+      "file_path": "src/client/components/ui/Button.tsx",
+      "used_in_modules": ["Authentication & Registration", "Product Catalog", "Cart & Checkout", "Order Management (Buyer Side)", "Seller Dashboard", "Inventory & Product Management", "Order Management (Seller Side)", "Settings & Account Management"]
+    }
+  ],
+  "cross_module_endpoint_usage": [
+    {
+      "endpoint": "GET /api/users/me",
+      "defined_in_module": "Authentication & Registration",
+      "consumed_by_modules": ["Authentication & Registration", "Settings & Account Management"]
+    },
+    {
+      "endpoint": "POST /api/auth/login",
+      "defined_in_module": "Authentication & Registration",
+      "consumed_by_modules": ["Authentication & Registration"]
+    },
+    {
+      "endpoint": "GET /api/products",
+      "defined_in_module": "Inventory & Product Management",
+      "consumed_by_modules": ["Product Catalog", "Seller Dashboard"]
+    },
+    {
+      "endpoint": "GET /api/orders",
+      "defined_in_module": "Cart & Checkout",
+      "consumed_by_modules": ["Order Management (Buyer Side)", "Order Management (Seller Side)", "Seller Dashboard"]
+    }
+  ]
+}

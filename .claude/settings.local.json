@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(node -e \"JSON.parse\\(require\\(''fs''\\).readFileSync\\(''C:/Users/vishn/Desktop/New-plan/architecture_output/_meta.json'',''utf8''\\)\\); console.log\\(''_meta.json: VALID''\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\(''fs''\\).readFileSync\\(''C:/Users/vishn/Desktop/New-plan/architecture_output/authentication-registration.json'',''utf8''\\)\\); console.log\\(''authentication-registration.json: VALID''\\)\")",
+      "Bash(node -e:*)",
+      "Bash(npx prisma validate:*)",
+      "Bash(npx --no-install prisma validate:*)",
+      "Bash(node_modules/.bin/prisma validate)",
+      "Bash(npx:*)",
+      "Bash(npm install:*)",
+      "Bash(DATABASE_URL=\"postgresql://localhost:5432/dummy\" npx prisma validate:*)",
+      "Bash(DATABASE_URL=\"postgresql://localhost:5432/dummy\" npx prisma generate:*)",
+      "Bash(npm run typecheck:*)"
+    ]
+  }
+}

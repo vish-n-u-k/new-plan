@@ -1,0 +1,1248 @@
+{
+  "module_name": "Authentication & Registration",
+  "module_description": "Handles user signup, login, password reset, email verification, and session management for both buyers and seller. This is the foundational module — all other modules depend on it for authentication state and role-based access.",
+  "module_business_logic": "Buyers register with email, password, business name, and phone number. Seller account is pre-created (no self-registration for sellers in v1). Email verification is sent on buyer signup. Login authenticates via email/password and redirects based on role — buyers go to /catalog, sellers go to /dashboard. Sessions persist across browser sessions via HTTP-only cookies. Password reset is email-link-based with time-limited tokens. All routes except /login, /register, and /forgot-password require an active session.",
+  "depends_on_modules": [],
+
+  "database": {
+    "models": [
+      {
+        "model_name": "User",
+        "description": "Platform user — either a buyer or seller. Stores authentication credentials, profile info, and email verification status.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique identifier for the user"
+          },
+          {
+            "name": "email",
+            "type": "String",
+            "constraints": "@unique",
+            "description": "User's email address — used for login and communication"
+          },
+          {
+            "name": "passwordHash",
+            "type": "String",
+            "constraints": "",
+            "description": "Bcrypt-hashed password — never stored or returned in plaintext"
+          },
+          {
+            "name": "businessName",
+            "type": "String",
+            "constraints": "",
+            "description": "Business name of the buyer or seller"
+          },
+          {
+            "name": "phone",
+            "type": "String",
+            "constraints": "?",
+            "description": "Phone number — required for buyers at registration, optional for sellers"
+          },
+          {
+            "name": "role",
+            "type": "Role",
+            "constraints": "@default(BUYER)",
+            "description": "User role — BUYER or SELLER. Determines access and redirect behavior."
+          },
+          {
+            "name": "emailVerified",
+            "type": "Boolean",
+            "constraints": "@default(false)",
+            "description": "Whether the user's email has been verified via the verification link"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "Timestamp when the user account was created"
+          },
+          {
+            "name": "updatedAt",
+            "type": "DateTime",
+            "constraints": "@updatedAt",
+            "description": "Timestamp of the last account update"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "sessions",
+            "type": "Session[]",
+            "relation_type": "one-to-many",
+            "relation_annotation": "",
+            "description": "Active login sessions for this user"
+          },
+          {
+            "field_name": "verificationTokens",
+            "type": "VerificationToken[]",
+            "relation_type": "one-to-many",
+            "relation_annotation": "",
+            "description": "Email verification and password reset tokens issued to this user"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["email"],
+            "type": "unique",
+            "description": "Enforced by @unique — fast lookup for login and duplicate checking"
+          },
+          {
+            "fields": ["role"],
+            "type": "index",
+            "description": "Index on role for role-based queries (e.g., list all sellers)"
+          }
+        ]
+      },
+      {
+        "model_name": "Session",
+        "description": "Represents an active user session. Linked to the user via userId. Session token is stored in an HTTP-only cookie on the client.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique session identifier"
+          },
+          {
+            "name": "sessionToken",
+            "type": "String",
+            "constraints": "@unique",
+            "description": "Opaque token stored in the HTTP-only cookie — used to look up the session"
+          },
+          {
+            "name": "userId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the User who owns this session"
+          },
+          {
+            "name": "expiresAt",
+            "type": "DateTime",
+            "constraints": "",
+            "description": "When this session expires — sessions older than this are invalid"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "When this session was created"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "user",
+            "type": "User",
+            "relation_type": "many-to-one",
+            "relation_annotation": "@relation(fields: [userId], references: [id], onDelete: Cascade)",
+            "description": "The user who owns this session"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["sessionToken"],
+            "type": "unique",
+            "description": "Enforced by @unique — fast lookup for session validation on every request"
+          },
+          {
+            "fields": ["userId"],
+            "type": "index",
+            "description": "Index for finding all sessions of a user (e.g., logout all devices)"
+          },
+          {
+            "fields": ["expiresAt"],
+            "type": "index",
+            "description": "Index for cleanup queries to delete expired sessions"
+          }
+        ]
+      },
+      {
+        "model_name": "VerificationToken",
+        "description": "Time-limited token used for email verification and password reset flows. Each token has a type to distinguish between the two use cases.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique token record identifier"
+          },
+          {
+            "name": "token",
+            "type": "String",
+            "constraints": "@unique",
+            "description": "The actual token string sent in the email link"
+          },
+          {
+            "name": "type",
+            "type": "TokenType",
+            "constraints": "",
+            "description": "Whether this token is for EMAIL_VERIFICATION or PASSWORD_RESET"
+          },
+          {
+            "name": "userId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the User this token belongs to"
+          },
+          {
+            "name": "expiresAt",
+            "type": "DateTime",
+            "constraints": "",
+            "description": "Expiration timestamp — tokens are invalid after this time"
+          },
+          {
+            "name": "usedAt",
+            "type": "DateTime",
+            "constraints": "?",
+            "description": "When the token was consumed — null if still unused. Prevents reuse."
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "When the token was generated"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "user",
+            "type": "User",
+            "relation_type": "many-to-one",
+            "relation_annotation": "@relation(fields: [userId], references: [id], onDelete: Cascade)",
+            "description": "The user this token was issued for"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["token"],
+            "type": "unique",
+            "description": "Enforced by @unique — fast lookup when validating a token from a link"
+          },
+          {
+            "fields": ["userId", "type"],
+            "type": "index",
+            "description": "Index for finding existing tokens of a given type for a user (e.g., invalidate old reset tokens)"
+          },
+          {
+            "fields": ["expiresAt"],
+            "type": "index",
+            "description": "Index for cleanup queries to delete expired tokens"
+          }
+        ]
+      }
+    ],
+    "enums": [
+      {
+        "enum_name": "Role",
+        "values": ["BUYER", "SELLER"],
+        "description": "User role — determines access permissions and post-login redirect destination"
+      },
+      {
+        "enum_name": "TokenType",
+        "values": ["EMAIL_VERIFICATION", "PASSWORD_RESET"],
+        "description": "Distinguishes between email verification tokens and password reset tokens"
+      }
+    ],
+    "seed_data": [
+      {
+        "model": "User",
+        "description": "Pre-created seller account for v1 (seller self-registration not supported in v1)",
+        "records": "One user with role SELLER, email 'seller@example.com', emailVerified true, a bcrypt-hashed default password, businessName 'Demo Wholesale Store', and phone null."
+      }
+    ]
+  },
+
+  "backend": {
+    "schemas": [
+      {
+        "schema_name": "roleSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Enum schema for user roles",
+        "fields": [
+          {
+            "name": "role",
+            "type": "z.enum(['BUYER', 'SELLER'])",
+            "validation": "Must be one of BUYER or SELLER"
+          }
+        ],
+        "inferred_type": "Role"
+      },
+      {
+        "schema_name": "loginSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates login credentials submitted by the user",
+        "fields": [
+          {
+            "name": "email",
+            "type": "z.string().email('Please enter a valid email address')",
+            "validation": "Required, valid email format"
+          },
+          {
+            "name": "password",
+            "type": "z.string().min(1, 'Password is required')",
+            "validation": "Required, non-empty"
+          }
+        ],
+        "inferred_type": "LoginInput"
+      },
+      {
+        "schema_name": "signupSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates buyer registration form data including password confirmation",
+        "fields": [
+          {
+            "name": "email",
+            "type": "z.string().email('Please enter a valid email address')",
+            "validation": "Required, valid email format"
+          },
+          {
+            "name": "password",
+            "type": "z.string().min(8, 'Password must be at least 8 characters').max(72, 'Password must be at most 72 characters')",
+            "validation": "Required, 8-72 characters"
+          },
+          {
+            "name": "confirmPassword",
+            "type": "z.string()",
+            "validation": "Must match password field — enforced with .refine()"
+          },
+          {
+            "name": "businessName",
+            "type": "z.string().min(1, 'Business name is required').max(200, 'Business name must be at most 200 characters')",
+            "validation": "Required, 1-200 characters"
+          },
+          {
+            "name": "phone",
+            "type": "z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number must be at most 15 digits')",
+            "validation": "Required, 10-15 digit phone number"
+          }
+        ],
+        "inferred_type": "SignupInput"
+      },
+      {
+        "schema_name": "signupApiSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Server-side signup schema without confirmPassword — used by the API route after the client strips it",
+        "fields": [
+          {
+            "name": "email",
+            "type": "z.string().email()",
+            "validation": "Required, valid email"
+          },
+          {
+            "name": "password",
+            "type": "z.string().min(8).max(72)",
+            "validation": "Required, 8-72 characters"
+          },
+          {
+            "name": "businessName",
+            "type": "z.string().min(1).max(200)",
+            "validation": "Required, 1-200 characters"
+          },
+          {
+            "name": "phone",
+            "type": "z.string().min(10).max(15)",
+            "validation": "Required, 10-15 digits"
+          }
+        ],
+        "inferred_type": "SignupApiInput"
+      },
+      {
+        "schema_name": "forgotPasswordSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates the email for password reset request",
+        "fields": [
+          {
+            "name": "email",
+            "type": "z.string().email('Please enter a valid email address')",
+            "validation": "Required, valid email format"
+          }
+        ],
+        "inferred_type": "ForgotPasswordInput"
+      },
+      {
+        "schema_name": "resetPasswordSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates the new password and token for password reset completion",
+        "fields": [
+          {
+            "name": "token",
+            "type": "z.string().min(1, 'Reset token is required')",
+            "validation": "Required, the reset token from the URL"
+          },
+          {
+            "name": "password",
+            "type": "z.string().min(8, 'Password must be at least 8 characters').max(72)",
+            "validation": "Required, 8-72 characters"
+          },
+          {
+            "name": "confirmPassword",
+            "type": "z.string()",
+            "validation": "Must match password — enforced with .refine()"
+          }
+        ],
+        "inferred_type": "ResetPasswordInput"
+      },
+      {
+        "schema_name": "resetPasswordApiSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Server-side reset password schema without confirmPassword",
+        "fields": [
+          {
+            "name": "token",
+            "type": "z.string().min(1)",
+            "validation": "Required"
+          },
+          {
+            "name": "password",
+            "type": "z.string().min(8).max(72)",
+            "validation": "Required, 8-72 characters"
+          }
+        ],
+        "inferred_type": "ResetPasswordApiInput"
+      },
+      {
+        "schema_name": "verifyEmailSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates the email verification token",
+        "fields": [
+          {
+            "name": "token",
+            "type": "z.string().min(1, 'Verification token is required')",
+            "validation": "Required, the token from the verification email link"
+          }
+        ],
+        "inferred_type": "VerifyEmailInput"
+      },
+      {
+        "schema_name": "resendVerificationSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates the email for resending verification",
+        "fields": [
+          {
+            "name": "email",
+            "type": "z.string().email()",
+            "validation": "Required, valid email format"
+          }
+        ],
+        "inferred_type": "ResendVerificationInput"
+      },
+      {
+        "schema_name": "userResponseSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Schema for user data returned in API responses — excludes passwordHash and internal fields",
+        "fields": [
+          {
+            "name": "id",
+            "type": "z.string().cuid()",
+            "validation": "Valid CUID"
+          },
+          {
+            "name": "email",
+            "type": "z.string().email()",
+            "validation": "Valid email"
+          },
+          {
+            "name": "businessName",
+            "type": "z.string()",
+            "validation": "Business name"
+          },
+          {
+            "name": "phone",
+            "type": "z.string().nullable()",
+            "validation": "Phone number or null"
+          },
+          {
+            "name": "role",
+            "type": "roleSchema",
+            "validation": "BUYER or SELLER"
+          },
+          {
+            "name": "emailVerified",
+            "type": "z.boolean()",
+            "validation": "Email verification status"
+          },
+          {
+            "name": "createdAt",
+            "type": "z.string().datetime()",
+            "validation": "ISO datetime string"
+          },
+          {
+            "name": "updatedAt",
+            "type": "z.string().datetime()",
+            "validation": "ISO datetime string"
+          }
+        ],
+        "inferred_type": "UserResponse"
+      }
+    ],
+    "services": [
+      {
+        "service_name": "authService",
+        "file_path": "src/server/services/auth.service.ts",
+        "description": "Handles all authentication business logic — login, signup, password reset, email verification, and token management",
+        "methods": [
+          {
+            "method_name": "login",
+            "parameters": "(credentials: LoginInput) => Promise<{ user: UserResponse, sessionToken: string, redirectTo: string }>",
+            "business_logic": "1. Find user by email using db.user.findUnique(). 2. If user not found, throw INVALID_CREDENTIALS. 3. Compare password with passwordHash using bcrypt.compare(). 4. If password doesn't match, throw INVALID_CREDENTIALS. 5. Check if emailVerified is true — if not, throw EMAIL_NOT_VERIFIED. 6. Create a new Session record with a crypto.randomUUID() token and expiresAt set to 30 days from now. 7. Determine redirectTo based on role: BUYER → '/catalog', SELLER → '/dashboard'. 8. Return sanitized user data (exclude passwordHash), session token, and redirectTo.",
+            "prisma_operations": ["db.user.findUnique({ where: { email } })", "db.session.create({ data: { sessionToken, userId, expiresAt } })"],
+            "error_cases": [
+              {
+                "condition": "No user found with the given email OR password does not match",
+                "error": "AppError.unauthorized('Invalid email or password')"
+              },
+              {
+                "condition": "User's email is not verified",
+                "error": "AppError.forbidden('Please verify your email before logging in')"
+              }
+            ]
+          },
+          {
+            "method_name": "signup",
+            "parameters": "(data: SignupApiInput) => Promise<{ message: string }>",
+            "business_logic": "1. Check if a user with this email already exists using db.user.findUnique(). 2. If exists, throw EMAIL_ALREADY_EXISTS. 3. Hash the password using bcrypt.hash() with 12 salt rounds. 4. Create the user with role BUYER, emailVerified false. 5. Generate an email verification token using crypto.randomUUID(). 6. Create a VerificationToken record with type EMAIL_VERIFICATION and expiresAt 24 hours from now. 7. Send verification email with the token link (delegate to email utility — log to console in v1). 8. Return success message.",
+            "prisma_operations": ["db.user.findUnique({ where: { email } })", "db.user.create({ data: { email, passwordHash, businessName, phone, role: 'BUYER' } })", "db.verificationToken.create({ data: { token, type: 'EMAIL_VERIFICATION', userId, expiresAt } })"],
+            "error_cases": [
+              {
+                "condition": "A user with this email already exists",
+                "error": "AppError.conflict('An account with this email already exists')"
+              }
+            ]
+          },
+          {
+            "method_name": "verifyEmail",
+            "parameters": "(token: string) => Promise<{ message: string }>",
+            "business_logic": "1. Find the VerificationToken by token string where type is EMAIL_VERIFICATION. 2. If not found, throw INVALID_TOKEN. 3. If expiresAt is in the past, throw TOKEN_EXPIRED. 4. If usedAt is not null, throw INVALID_TOKEN (already used). 5. Update the User's emailVerified to true. 6. Mark the token as used by setting usedAt to now(). 7. Return success message.",
+            "prisma_operations": ["db.verificationToken.findUnique({ where: { token } })", "db.user.update({ where: { id: userId }, data: { emailVerified: true } })", "db.verificationToken.update({ where: { id }, data: { usedAt: new Date() } })"],
+            "error_cases": [
+              {
+                "condition": "Token not found or already used",
+                "error": "AppError.badRequest('This verification link is invalid')"
+              },
+              {
+                "condition": "Token has expired",
+                "error": "AppError.badRequest('This verification link has expired. Please request a new one.')"
+              }
+            ]
+          },
+          {
+            "method_name": "resendVerification",
+            "parameters": "(email: string) => Promise<{ message: string }>",
+            "business_logic": "1. Find user by email. 2. If not found, return success silently (prevent email enumeration). 3. If already verified, throw ALREADY_VERIFIED. 4. Check if a verification token was created in the last 60 seconds for this user — if so, throw RATE_LIMIT_EXCEEDED. 5. Invalidate existing unused verification tokens for this user by setting usedAt. 6. Generate a new verification token with 24h expiry. 7. Send verification email. 8. Return success message.",
+            "prisma_operations": ["db.user.findUnique({ where: { email } })", "db.verificationToken.findFirst({ where: { userId, type: 'EMAIL_VERIFICATION', usedAt: null }, orderBy: { createdAt: 'desc' } })", "db.verificationToken.updateMany({ where: { userId, type: 'EMAIL_VERIFICATION', usedAt: null }, data: { usedAt: new Date() } })", "db.verificationToken.create({ data: { token, type: 'EMAIL_VERIFICATION', userId, expiresAt } })"],
+            "error_cases": [
+              {
+                "condition": "User's email is already verified",
+                "error": "AppError.badRequest('This email is already verified')"
+              },
+              {
+                "condition": "A verification email was sent less than 60 seconds ago",
+                "error": "AppError.tooManyRequests('Please wait 60 seconds before requesting another verification email')"
+              }
+            ]
+          },
+          {
+            "method_name": "forgotPassword",
+            "parameters": "(email: string) => Promise<{ message: string }>",
+            "business_logic": "1. Find user by email. 2. If not found, return success message silently (prevent email enumeration — NEVER reveal whether email exists). 3. Invalidate any existing unused PASSWORD_RESET tokens for this user. 4. Generate a new password reset token with 1 hour expiry. 5. Create VerificationToken record with type PASSWORD_RESET. 6. Send password reset email with link containing the token. 7. Return generic success message.",
+            "prisma_operations": ["db.user.findUnique({ where: { email } })", "db.verificationToken.updateMany({ where: { userId, type: 'PASSWORD_RESET', usedAt: null }, data: { usedAt: new Date() } })", "db.verificationToken.create({ data: { token, type: 'PASSWORD_RESET', userId, expiresAt } })"],
+            "error_cases": []
+          },
+          {
+            "method_name": "resetPassword",
+            "parameters": "(token: string, newPassword: string) => Promise<{ message: string }>",
+            "business_logic": "1. Find the VerificationToken by token string where type is PASSWORD_RESET. 2. If not found, throw INVALID_TOKEN. 3. If expiresAt is in the past, throw TOKEN_EXPIRED. 4. If usedAt is not null, throw INVALID_TOKEN. 5. Hash the new password with bcrypt. 6. Update the user's passwordHash. 7. Mark the token as used. 8. Delete all existing sessions for this user (force re-login on all devices). 9. Return success message.",
+            "prisma_operations": ["db.verificationToken.findUnique({ where: { token } })", "db.user.update({ where: { id: userId }, data: { passwordHash } })", "db.verificationToken.update({ where: { id }, data: { usedAt: new Date() } })", "db.session.deleteMany({ where: { userId } })"],
+            "error_cases": [
+              {
+                "condition": "Token not found or already used",
+                "error": "AppError.badRequest('This password reset link is invalid')"
+              },
+              {
+                "condition": "Token has expired",
+                "error": "AppError.badRequest('This password reset link has expired. Please request a new one.')"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service_name": "sessionService",
+        "file_path": "src/server/services/session.service.ts",
+        "description": "Manages session lifecycle — validation, retrieval, and destruction. Used by all protected routes across all modules.",
+        "methods": [
+          {
+            "method_name": "validateSession",
+            "parameters": "(sessionToken: string) => Promise<{ user: UserResponse } | null>",
+            "business_logic": "1. Find the Session by sessionToken, including the related User. 2. If not found, return null. 3. If expiresAt is in the past, delete the session and return null. 4. Return sanitized user data (exclude passwordHash).",
+            "prisma_operations": ["db.session.findUnique({ where: { sessionToken }, include: { user: true } })", "db.session.delete({ where: { id } })"],
+            "error_cases": []
+          },
+          {
+            "method_name": "getSessionFromRequest",
+            "parameters": "(request: Request) => Promise<{ user: UserResponse } | null>",
+            "business_logic": "1. Extract the session token from the 'session_token' cookie in the request headers. 2. If no cookie found, return null. 3. Call validateSession with the token. 4. Return the result.",
+            "prisma_operations": [],
+            "error_cases": []
+          },
+          {
+            "method_name": "destroySession",
+            "parameters": "(sessionToken: string) => Promise<void>",
+            "business_logic": "1. Delete the Session record matching the given sessionToken. 2. If not found, silently succeed (idempotent).",
+            "prisma_operations": ["db.session.delete({ where: { sessionToken } })"],
+            "error_cases": []
+          },
+          {
+            "method_name": "destroyAllUserSessions",
+            "parameters": "(userId: string) => Promise<void>",
+            "business_logic": "1. Delete all Session records for the given userId. Used when resetting password to force re-login on all devices.",
+            "prisma_operations": ["db.session.deleteMany({ where: { userId } })"],
+            "error_cases": []
+          }
+        ]
+      }
+    ],
+    "api_routes": [
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "file_path": "src/app/api/auth/login/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "loginSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { user: UserResponse, redirectTo: string } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "INVALID_CREDENTIALS",
+            "description": "Email not found or password doesn't match"
+          },
+          {
+            "status_code": 403,
+            "error_code": "EMAIL_NOT_VERIFIED",
+            "description": "User hasn't verified their email yet"
+          },
+          {
+            "status_code": 400,
+            "error_code": "VALIDATION_ERROR",
+            "description": "Request body fails Zod validation"
+          }
+        ],
+        "delegates_to": "authService.login",
+        "auth_required": false,
+        "allowed_roles": [],
+        "_notes": "On success, sets an HTTP-only 'session_token' cookie with the session token. Cookie is Secure, SameSite=Lax, Path=/, Max-Age=30 days."
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/signup",
+        "file_path": "src/app/api/auth/signup/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "signupApiSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'Registration successful. Please check your email to verify your account.' } }",
+          "status_code": 201
+        },
+        "error_responses": [
+          {
+            "status_code": 409,
+            "error_code": "EMAIL_ALREADY_EXISTS",
+            "description": "An account with this email already exists"
+          },
+          {
+            "status_code": 400,
+            "error_code": "VALIDATION_ERROR",
+            "description": "Request body fails Zod validation"
+          }
+        ],
+        "delegates_to": "authService.signup",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/verify-email",
+        "file_path": "src/app/api/auth/verify-email/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "verifyEmailSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'Email verified successfully. You can now log in.' } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "INVALID_TOKEN",
+            "description": "Token not found or already used"
+          },
+          {
+            "status_code": 400,
+            "error_code": "TOKEN_EXPIRED",
+            "description": "Verification token has expired"
+          }
+        ],
+        "delegates_to": "authService.verifyEmail",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/resend-verification",
+        "file_path": "src/app/api/auth/resend-verification/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "resendVerificationSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'If an account with this email exists, a verification email has been sent.' } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "ALREADY_VERIFIED",
+            "description": "Email is already verified"
+          },
+          {
+            "status_code": 429,
+            "error_code": "RATE_LIMIT_EXCEEDED",
+            "description": "Verification email was sent less than 60 seconds ago"
+          }
+        ],
+        "delegates_to": "authService.resendVerification",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/forgot-password",
+        "file_path": "src/app/api/auth/forgot-password/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "forgotPasswordSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'If an account with this email exists, a password reset link has been sent.' } }",
+          "status_code": 200
+        },
+        "error_responses": [],
+        "delegates_to": "authService.forgotPassword",
+        "auth_required": false,
+        "allowed_roles": [],
+        "_notes": "Always returns success to prevent email enumeration — no error responses."
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/reset-password",
+        "file_path": "src/app/api/auth/reset-password/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "resetPasswordApiSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'Password reset successfully. You can now log in with your new password.' } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "INVALID_TOKEN",
+            "description": "Token not found or already used"
+          },
+          {
+            "status_code": 400,
+            "error_code": "TOKEN_EXPIRED",
+            "description": "Reset token has expired"
+          }
+        ],
+        "delegates_to": "authService.resetPassword",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/session",
+        "file_path": "src/app/api/auth/session/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { user: UserResponse } } | { success: true, data: null }",
+          "status_code": 200
+        },
+        "error_responses": [],
+        "delegates_to": "sessionService.getSessionFromRequest",
+        "auth_required": false,
+        "allowed_roles": [],
+        "_notes": "Returns the authenticated user's data if a valid session cookie exists, or data: null if not logged in. Used by useSession hook across the entire app."
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "file_path": "src/app/api/auth/logout/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'Logged out successfully' } }",
+          "status_code": 200
+        },
+        "error_responses": [],
+        "delegates_to": "sessionService.destroySession",
+        "auth_required": false,
+        "allowed_roles": [],
+        "_notes": "Extracts session token from cookie, destroys the session record, and clears the session_token cookie in the response."
+      }
+    ]
+  },
+
+  "frontend": {
+    "screens": [
+      {
+        "screen_name": "Login Screen",
+        "screen_type": "form",
+        "route": "/login",
+        "file_path": "src/app/login/page.tsx",
+        "page_name": "LoginPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "LoginForm",
+            "file_path": "src/client/components/auth/LoginForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "onSuccess",
+                "type": "(user: { role: Role }) => void",
+                "description": "Callback fired after successful login — receives user data for role-based redirect"
+              }
+            ],
+            "description": "Email and password login form with inline validation errors. Submits credentials to the login endpoint via useLogin hook. On success, calls onSuccess with the authenticated user's role so the page can redirect (buyer to /catalog, seller to /dashboard). Includes links to /register and /forgot-password."
+          },
+          {
+            "component_name": "AuthLayout",
+            "file_path": "src/client/components/auth/AuthLayout.tsx",
+            "type": "layout",
+            "props": [
+              {
+                "name": "title",
+                "type": "string",
+                "description": "Page heading displayed above the form (e.g., 'Welcome Back')"
+              },
+              {
+                "name": "subtitle",
+                "type": "string",
+                "description": "Secondary text below the heading (e.g., 'Sign in to your account')"
+              },
+              {
+                "name": "children",
+                "type": "ReactNode",
+                "description": "The form component to render within the centered layout"
+              }
+            ],
+            "description": "Shared centered layout wrapper used by all auth screens. Provides consistent styling — centered card with app logo, title, subtitle, and form slot."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useLogin",
+            "file_path": "src/client/hooks/useLogin.ts",
+            "consumes_endpoints": ["POST /api/auth/login"],
+            "returns": "{ login: (credentials: LoginInput) => Promise<{ user: UserResponse, redirectTo: string }>, isLoading: boolean, error: string | null }",
+            "description": "Submits email/password to POST /api/auth/login. On success, the API sets the session cookie automatically. Returns user data and redirect path. On failure, surfaces the error message for inline display."
+          }
+        ],
+        "validation_schemas": ["loginSchema"],
+        "user_interactions": [
+          "Enter email and password",
+          "Submit login form",
+          "Click 'Create an account' link to navigate to /register",
+          "Click 'Forgot password?' link to navigate to /forgot-password"
+        ],
+        "states": {
+          "loading": "Submit button shows spinner and is disabled while login request is in flight",
+          "empty": "Not applicable — form is always rendered with empty fields on mount",
+          "error": "Inline error message below the form fields (e.g., 'Invalid email or password'). Field-level validation errors shown below each input."
+        }
+      },
+      {
+        "screen_name": "Buyer Registration Screen",
+        "screen_type": "form",
+        "route": "/register",
+        "file_path": "src/app/register/page.tsx",
+        "page_name": "RegisterPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "SignupForm",
+            "file_path": "src/client/components/auth/SignupForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "onSuccess",
+                "type": "(email: string) => void",
+                "description": "Callback fired after successful registration — passes the registered email to show verification prompt"
+              }
+            ],
+            "description": "Buyer registration form with fields: email, password, confirm password, business name, and phone number. Validates all fields client-side with signupSchema (Zod) before submitting. On success, calls onSuccess with the email to transition UI to the verification prompt. Includes a link back to /login."
+          },
+          {
+            "component_name": "EmailVerificationPrompt",
+            "file_path": "src/client/components/auth/EmailVerificationPrompt.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "email",
+                "type": "string",
+                "description": "The email address the verification was sent to"
+              },
+              {
+                "name": "onResend",
+                "type": "() => void",
+                "description": "Callback to resend the verification email"
+              },
+              {
+                "name": "isResending",
+                "type": "boolean",
+                "description": "Whether a resend request is in flight"
+              }
+            ],
+            "description": "Displayed after successful signup. Shows a message instructing the buyer to check their email for a verification link. Includes a 'Resend email' button (with rate-limit cooldown UI) and a link to /login."
+          },
+          {
+            "component_name": "AuthLayout",
+            "file_path": "src/client/components/auth/AuthLayout.tsx",
+            "type": "layout",
+            "props": [
+              {
+                "name": "title",
+                "type": "string",
+                "description": "Page heading"
+              },
+              {
+                "name": "subtitle",
+                "type": "string",
+                "description": "Secondary text below heading"
+              },
+              {
+                "name": "children",
+                "type": "ReactNode",
+                "description": "Form content"
+              }
+            ],
+            "description": "Shared auth layout — reused from Login Screen"
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useSignup",
+            "file_path": "src/client/hooks/useSignup.ts",
+            "consumes_endpoints": ["POST /api/auth/signup"],
+            "returns": "{ signup: (data: SignupInput) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Submits buyer registration data to POST /api/auth/signup. Strips confirmPassword before sending. On success, triggers email verification prompt. On failure (e.g., email already exists), surfaces the error message."
+          },
+          {
+            "hook_name": "useResendVerification",
+            "file_path": "src/client/hooks/useResendVerification.ts",
+            "consumes_endpoints": ["POST /api/auth/resend-verification"],
+            "returns": "{ resend: (email: string) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Resends the email verification link to the given email. Includes rate-limiting feedback (e.g., 'Please wait 60 seconds before retrying')."
+          }
+        ],
+        "validation_schemas": ["signupSchema"],
+        "user_interactions": [
+          "Enter email, password, confirm password, business name, and phone number",
+          "Submit registration form",
+          "Click 'Resend verification email' button after successful registration",
+          "Click 'Already have an account? Log in' link to navigate to /login"
+        ],
+        "states": {
+          "loading": "Submit button shows spinner and is disabled while signup request is in flight",
+          "empty": "Not applicable — form renders with empty fields on mount",
+          "error": "Inline field-level validation errors (e.g., 'Password must be at least 8 characters'). API-level error banner above form (e.g., 'An account with this email already exists')."
+        }
+      },
+      {
+        "screen_name": "Forgot Password Screen",
+        "screen_type": "form",
+        "route": "/forgot-password",
+        "file_path": "src/app/forgot-password/page.tsx",
+        "page_name": "ForgotPasswordPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "ForgotPasswordForm",
+            "file_path": "src/client/components/auth/ForgotPasswordForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "onSuccess",
+                "type": "(email: string) => void",
+                "description": "Callback fired after reset email is sent — used to show confirmation message"
+              }
+            ],
+            "description": "Simple form with a single email field. Submits to the forgot password endpoint via useForgotPassword hook. On success, calls onSuccess to transition the UI to the ResetEmailSentPrompt. Includes a link back to /login."
+          },
+          {
+            "component_name": "ResetEmailSentPrompt",
+            "file_path": "src/client/components/auth/ResetEmailSentPrompt.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "email",
+                "type": "string",
+                "description": "The email address the reset link was sent to"
+              }
+            ],
+            "description": "Confirmation message shown after the reset email is sent. Tells the user to check their inbox for a password reset link and includes a link back to /login."
+          },
+          {
+            "component_name": "AuthLayout",
+            "file_path": "src/client/components/auth/AuthLayout.tsx",
+            "type": "layout",
+            "props": [
+              {
+                "name": "title",
+                "type": "string",
+                "description": "Page heading"
+              },
+              {
+                "name": "subtitle",
+                "type": "string",
+                "description": "Secondary text below heading"
+              },
+              {
+                "name": "children",
+                "type": "ReactNode",
+                "description": "Form content"
+              }
+            ],
+            "description": "Shared auth layout — reused from Login Screen"
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useForgotPassword",
+            "file_path": "src/client/hooks/useForgotPassword.ts",
+            "consumes_endpoints": ["POST /api/auth/forgot-password"],
+            "returns": "{ requestReset: (email: string) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Sends a password reset request. The API always returns success (even if the email doesn't exist) to prevent email enumeration. Frontend shows the confirmation message regardless."
+          }
+        ],
+        "validation_schemas": ["forgotPasswordSchema"],
+        "user_interactions": [
+          "Enter email address",
+          "Submit forgot password form",
+          "Click 'Back to login' link to navigate to /login"
+        ],
+        "states": {
+          "loading": "Submit button shows spinner and is disabled while request is in flight",
+          "empty": "Not applicable — form renders with empty email field on mount",
+          "error": "Field-level validation error if email format is invalid. No API error displayed to prevent email enumeration."
+        }
+      },
+      {
+        "screen_name": "Reset Password Screen",
+        "screen_type": "form",
+        "route": "/reset-password/[token]",
+        "file_path": "src/app/reset-password/[token]/page.tsx",
+        "page_name": "ResetPasswordPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "ResetPasswordForm",
+            "file_path": "src/client/components/auth/ResetPasswordForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "token",
+                "type": "string",
+                "description": "The password reset token extracted from the URL"
+              },
+              {
+                "name": "onSuccess",
+                "type": "() => void",
+                "description": "Callback fired after password is successfully reset — navigates to /login"
+              }
+            ],
+            "description": "Form with new password and confirm password fields. Validates with resetPasswordSchema (Zod). Submits the new password along with the URL token to the reset endpoint. On success, shows a confirmation message and redirects to /login. If the token is invalid or expired, shows an error with a link to /forgot-password."
+          },
+          {
+            "component_name": "AuthLayout",
+            "file_path": "src/client/components/auth/AuthLayout.tsx",
+            "type": "layout",
+            "props": [
+              {
+                "name": "title",
+                "type": "string",
+                "description": "Page heading"
+              },
+              {
+                "name": "subtitle",
+                "type": "string",
+                "description": "Secondary text below heading"
+              },
+              {
+                "name": "children",
+                "type": "ReactNode",
+                "description": "Form content"
+              }
+            ],
+            "description": "Shared auth layout — reused from Login Screen"
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useResetPassword",
+            "file_path": "src/client/hooks/useResetPassword.ts",
+            "consumes_endpoints": ["POST /api/auth/reset-password"],
+            "returns": "{ resetPassword: (token: string, newPassword: string) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Submits the new password with the reset token. Strips confirmPassword before sending. On success, confirms the password was changed. On failure (expired/invalid token), surfaces the error."
+          }
+        ],
+        "validation_schemas": ["resetPasswordSchema"],
+        "user_interactions": [
+          "Enter new password and confirm password",
+          "Submit reset password form",
+          "Click 'Request a new link' if token is expired",
+          "Click 'Back to login' link"
+        ],
+        "states": {
+          "loading": "Submit button shows spinner and is disabled while request is in flight",
+          "empty": "Not applicable — form renders with empty password fields on mount",
+          "error": "Field-level validation (password mismatch, minimum length). Token-level error banner ('This link has expired. Request a new password reset.') with link to /forgot-password."
+        }
+      },
+      {
+        "screen_name": "Email Verification Screen",
+        "screen_type": "confirmation",
+        "route": "/verify-email/[token]",
+        "file_path": "src/app/verify-email/[token]/page.tsx",
+        "page_name": "VerifyEmailPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "VerificationStatus",
+            "file_path": "src/client/components/auth/VerificationStatus.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "status",
+                "type": "'loading' | 'success' | 'error'",
+                "description": "Current verification status"
+              },
+              {
+                "name": "errorMessage",
+                "type": "string | null",
+                "description": "Error message if verification failed"
+              }
+            ],
+            "description": "Displays the result of email verification. On page load, the token is automatically sent to the verification endpoint via useVerifyEmail hook. Shows: loading spinner while verifying, success message with link to /login, or error message with link to resend verification."
+          },
+          {
+            "component_name": "AuthLayout",
+            "file_path": "src/client/components/auth/AuthLayout.tsx",
+            "type": "layout",
+            "props": [
+              {
+                "name": "title",
+                "type": "string",
+                "description": "Page heading"
+              },
+              {
+                "name": "subtitle",
+                "type": "string",
+                "description": "Secondary text below heading"
+              },
+              {
+                "name": "children",
+                "type": "ReactNode",
+                "description": "Content"
+              }
+            ],
+            "description": "Shared auth layout — reused from Login Screen"
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useVerifyEmail",
+            "file_path": "src/client/hooks/useVerifyEmail.ts",
+            "consumes_endpoints": ["POST /api/auth/verify-email"],
+            "returns": "{ status: 'loading' | 'success' | 'error', errorMessage: string | null }",
+            "description": "Automatically sends the verification token to the API on mount. Returns the verification status. On success, the user's email is marked as verified. On failure (expired or invalid token), surfaces the error."
+          }
+        ],
+        "validation_schemas": [],
+        "user_interactions": [
+          "Land on page via email link (automatic verification on mount)",
+          "Click 'Go to login' on success",
+          "Click 'Resend verification email' on failure"
+        ],
+        "states": {
+          "loading": "Centered spinner with 'Verifying your email...' text",
+          "empty": "Not applicable",
+          "error": "Error message with 'This verification link has expired or is invalid' and a link to request a new verification email"
+        }
+      }
+    ],
+    "shared_hooks": [
+      {
+        "hook_name": "useSession",
+        "file_path": "src/client/hooks/useSession.ts",
+        "consumes_endpoints": ["GET /api/auth/session", "POST /api/auth/logout"],
+        "returns": "{ user: UserResponse | null, isLoading: boolean, isAuthenticated: boolean, role: Role | null, logout: () => Promise<void> }",
+        "description": "Core session hook used across the entire application. Fetches the current session on mount via GET /api/auth/session. Provides user data, authentication status, and role. Used by AuthGuard and RoleGuard components. Exposes a logout function that calls POST /api/auth/logout and clears client state."
+      }
+    ],
+    "shared_components": [
+      {
+        "component_name": "AuthGuard",
+        "file_path": "src/client/components/auth/AuthGuard.tsx",
+        "type": "layout",
+        "props": [
+          {
+            "name": "children",
+            "type": "ReactNode",
+            "description": "Protected content to render when authenticated"
+          },
+          {
+            "name": "fallback",
+            "type": "ReactNode",
+            "description": "Optional loading fallback shown while session is being validated"
+          }
+        ],
+        "description": "Wraps protected pages. Uses useSession to check authentication status. If not authenticated, redirects to /login. If still loading, shows fallback or a loading spinner. Used by all protected pages across all modules."
+      },
+      {
+        "component_name": "RoleGuard",
+        "file_path": "src/client/components/auth/RoleGuard.tsx",
+        "type": "layout",
+        "props": [
+          {
+            "name": "allowedRoles",
+            "type": "Role[]",
+            "description": "List of roles that are allowed to view the wrapped content"
+          },
+          {
+            "name": "children",
+            "type": "ReactNode",
+            "description": "Content to render if the user has an allowed role"
+          },
+          {
+            "name": "fallback",
+            "type": "ReactNode",
+            "description": "Optional content to show if the user doesn't have the required role (defaults to redirect)"
+          }
+        ],
+        "description": "Wraps role-specific pages. Uses useSession to check the user's role. If the role is not in allowedRoles, redirects to the appropriate default page (buyer to /catalog, seller to /dashboard). Used by seller-only and buyer-only pages."
+      }
+    ]
+  }
+}

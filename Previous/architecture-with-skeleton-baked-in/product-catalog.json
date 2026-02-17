@@ -1,0 +1,1075 @@
+{
+  "module_name": "Product Catalog",
+  "module_description": "The main browsing experience where buyers discover, search, filter, and view clothing products. Serves as the primary landing page for authenticated buyers after login.",
+  "module_business_logic": "Only products with status ACTIVE and total stock >= 10 (MOQ) across all variants are displayed. Out-of-stock or low-stock products are hidden from the listing but may show as 'Unavailable' if accessed via direct URL. Buyers can filter by category (Men/Women/Kids), size, color, and price range. Search matches against product name. Sorting options: price low-high, price high-low, newest first. On the product detail screen, quantity selector enforces MOQ of 10 per variant. Stock is shown per variant (size + color). Add to Cart adds the selected variant and quantity to the server-side cart. If a product has an active discount, both original and discounted price are shown.",
+  "depends_on_modules": ["Authentication & Registration"],
+
+  "database": {
+    "models": [
+      {
+        "model_name": "Product",
+        "description": "Clothing product listed by the seller. Contains basic product info — variants, images, and pricing are in related models. Defined here because Product Catalog is the first module in the build order that needs this model.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique product identifier"
+          },
+          {
+            "name": "name",
+            "type": "String",
+            "constraints": "",
+            "description": "Product name displayed in catalog and detail page"
+          },
+          {
+            "name": "description",
+            "type": "String",
+            "constraints": "?",
+            "description": "Optional product description shown on detail page"
+          },
+          {
+            "name": "category",
+            "type": "Category",
+            "constraints": "",
+            "description": "Product category — MEN, WOMEN, or KIDS"
+          },
+          {
+            "name": "status",
+            "type": "ProductStatus",
+            "constraints": "@default(DRAFT)",
+            "description": "Product visibility status — ACTIVE (visible to buyers), INACTIVE (hidden), DRAFT (not yet published)"
+          },
+          {
+            "name": "sellerId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the User (seller) who owns this product"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "When the product was created"
+          },
+          {
+            "name": "updatedAt",
+            "type": "DateTime",
+            "constraints": "@updatedAt",
+            "description": "Last update timestamp"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "seller",
+            "type": "User",
+            "relation_type": "many-to-one",
+            "relation_annotation": "@relation(fields: [sellerId], references: [id])",
+            "description": "The seller who listed this product"
+          },
+          {
+            "field_name": "variants",
+            "type": "ProductVariant[]",
+            "relation_type": "one-to-many",
+            "relation_annotation": "",
+            "description": "Size/color combinations with their own price and stock"
+          },
+          {
+            "field_name": "images",
+            "type": "ProductImage[]",
+            "relation_type": "one-to-many",
+            "relation_annotation": "",
+            "description": "Product images — first image (by sortOrder) is the thumbnail"
+          },
+          {
+            "field_name": "discount",
+            "type": "Discount?",
+            "relation_type": "one-to-one",
+            "relation_annotation": "",
+            "description": "Optional active discount on this product — defined in Seller Dashboard module"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["sellerId"],
+            "type": "index",
+            "description": "Index for seller's product list queries"
+          },
+          {
+            "fields": ["status"],
+            "type": "index",
+            "description": "Index for filtering by product status (ACTIVE products for catalog)"
+          },
+          {
+            "fields": ["category"],
+            "type": "index",
+            "description": "Index for category-based filtering"
+          },
+          {
+            "fields": ["name"],
+            "type": "index",
+            "description": "Index for name-based search queries"
+          },
+          {
+            "fields": ["createdAt"],
+            "type": "index",
+            "description": "Index for sorting by newest first"
+          }
+        ]
+      },
+      {
+        "model_name": "ProductVariant",
+        "description": "A specific size + color combination of a product with its own price and stock level. Stock is tracked per variant. MOQ of 10 is enforced per variant when adding to cart.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique variant identifier"
+          },
+          {
+            "name": "productId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the parent Product"
+          },
+          {
+            "name": "size",
+            "type": "String",
+            "constraints": "",
+            "description": "Size label (e.g., 'S', 'M', 'L', 'XL', 'XXL')"
+          },
+          {
+            "name": "color",
+            "type": "String",
+            "constraints": "",
+            "description": "Color name (e.g., 'Red', 'Blue', 'Black')"
+          },
+          {
+            "name": "price",
+            "type": "Decimal",
+            "constraints": "@db.Decimal(10, 2)",
+            "description": "Price per unit for this variant"
+          },
+          {
+            "name": "stock",
+            "type": "Int",
+            "constraints": "@default(0)",
+            "description": "Available stock count for this variant"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "When this variant was created"
+          },
+          {
+            "name": "updatedAt",
+            "type": "DateTime",
+            "constraints": "@updatedAt",
+            "description": "Last update timestamp"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "product",
+            "type": "Product",
+            "relation_type": "many-to-one",
+            "relation_annotation": "@relation(fields: [productId], references: [id], onDelete: Cascade)",
+            "description": "The product this variant belongs to"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["productId"],
+            "type": "index",
+            "description": "Index for fetching all variants of a product"
+          },
+          {
+            "fields": ["productId", "size", "color"],
+            "type": "unique",
+            "description": "Each product can only have one variant per size+color combination"
+          },
+          {
+            "fields": ["stock"],
+            "type": "index",
+            "description": "Index for stock-based queries (low stock alerts, availability checks)"
+          }
+        ]
+      },
+      {
+        "model_name": "ProductImage",
+        "description": "Product image record with sort order. The first image (sortOrder 0) serves as the product thumbnail in the catalog grid.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique image record identifier"
+          },
+          {
+            "name": "productId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the parent Product"
+          },
+          {
+            "name": "url",
+            "type": "String",
+            "constraints": "",
+            "description": "Image URL (stored in cloud storage or public folder)"
+          },
+          {
+            "name": "alt",
+            "type": "String",
+            "constraints": "@default('')",
+            "description": "Alt text for accessibility"
+          },
+          {
+            "name": "sortOrder",
+            "type": "Int",
+            "constraints": "@default(0)",
+            "description": "Display order — 0 is the thumbnail/primary image"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "When this image was uploaded"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "product",
+            "type": "Product",
+            "relation_type": "many-to-one",
+            "relation_annotation": "@relation(fields: [productId], references: [id], onDelete: Cascade)",
+            "description": "The product this image belongs to"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["productId"],
+            "type": "index",
+            "description": "Index for fetching all images of a product"
+          },
+          {
+            "fields": ["productId", "sortOrder"],
+            "type": "index",
+            "description": "Index for ordered image retrieval"
+          }
+        ]
+      }
+    ],
+    "enums": [
+      {
+        "enum_name": "Category",
+        "values": ["MEN", "WOMEN", "KIDS"],
+        "description": "Product category — used for filtering in the catalog"
+      },
+      {
+        "enum_name": "ProductStatus",
+        "values": ["ACTIVE", "INACTIVE", "DRAFT"],
+        "description": "Controls product visibility — only ACTIVE products are shown in the catalog"
+      }
+    ],
+    "seed_data": [
+      {
+        "model": "Product",
+        "description": "Sample products for development and testing of the catalog",
+        "records": "5-10 sample products across MEN, WOMEN, KIDS categories with status ACTIVE. Each product should have 3-5 variants (size/color combos) with varying stock levels (some above MOQ, some below). Each product should have 2-3 images. Assign all products to the pre-seeded seller user."
+      }
+    ]
+  },
+
+  "backend": {
+    "schemas": [
+      {
+        "schema_name": "catalogQuerySchema",
+        "file_path": "src/schemas/product.schema.ts",
+        "description": "Validates query parameters for the catalog listing endpoint — filters, search, sort, and pagination",
+        "fields": [
+          {
+            "name": "search",
+            "type": "z.string().optional()",
+            "validation": "Optional keyword search string"
+          },
+          {
+            "name": "category",
+            "type": "z.enum(['MEN', 'WOMEN', 'KIDS']).optional()",
+            "validation": "Optional category filter"
+          },
+          {
+            "name": "sizes",
+            "type": "z.string().transform(s => s.split(',')).optional()",
+            "validation": "Optional comma-separated size values — parsed into array"
+          },
+          {
+            "name": "colors",
+            "type": "z.string().transform(s => s.split(',')).optional()",
+            "validation": "Optional comma-separated color values — parsed into array"
+          },
+          {
+            "name": "priceMin",
+            "type": "z.coerce.number().min(0).optional()",
+            "validation": "Optional minimum price, coerced from query string"
+          },
+          {
+            "name": "priceMax",
+            "type": "z.coerce.number().min(0).optional()",
+            "validation": "Optional maximum price, coerced from query string"
+          },
+          {
+            "name": "sort",
+            "type": "z.enum(['price_asc', 'price_desc', 'newest']).optional().default('newest')",
+            "validation": "Sort option — defaults to newest"
+          },
+          {
+            "name": "page",
+            "type": "z.coerce.number().int().min(1).optional().default(1)",
+            "validation": "Page number — 1-indexed, defaults to 1"
+          },
+          {
+            "name": "limit",
+            "type": "z.coerce.number().int().min(1).max(50).optional().default(20)",
+            "validation": "Items per page — max 50, defaults to 20"
+          }
+        ],
+        "inferred_type": "CatalogQuery"
+      },
+      {
+        "schema_name": "productResponseSchema",
+        "file_path": "src/schemas/product.schema.ts",
+        "description": "Schema for product data in catalog listing responses — lightweight version without full variants",
+        "fields": [
+          {
+            "name": "id",
+            "type": "z.string().cuid()",
+            "validation": "Product ID"
+          },
+          {
+            "name": "name",
+            "type": "z.string()",
+            "validation": "Product name"
+          },
+          {
+            "name": "thumbnailUrl",
+            "type": "z.string()",
+            "validation": "URL of the primary product image"
+          },
+          {
+            "name": "category",
+            "type": "z.enum(['MEN', 'WOMEN', 'KIDS'])",
+            "validation": "Product category"
+          },
+          {
+            "name": "priceMin",
+            "type": "z.number()",
+            "validation": "Lowest variant price"
+          },
+          {
+            "name": "priceMax",
+            "type": "z.number()",
+            "validation": "Highest variant price"
+          },
+          {
+            "name": "discountedPriceMin",
+            "type": "z.number().nullable()",
+            "validation": "Lowest price after discount, null if no discount"
+          },
+          {
+            "name": "discountedPriceMax",
+            "type": "z.number().nullable()",
+            "validation": "Highest price after discount, null if no discount"
+          },
+          {
+            "name": "totalStock",
+            "type": "z.number()",
+            "validation": "Sum of stock across all variants"
+          },
+          {
+            "name": "moq",
+            "type": "z.number()",
+            "validation": "Minimum order quantity — always 10"
+          }
+        ],
+        "inferred_type": "CatalogProduct"
+      },
+      {
+        "schema_name": "productDetailResponseSchema",
+        "file_path": "src/schemas/product.schema.ts",
+        "description": "Schema for the full product detail response — includes all variants, images, and discount",
+        "fields": [
+          {
+            "name": "id",
+            "type": "z.string().cuid()",
+            "validation": "Product ID"
+          },
+          {
+            "name": "name",
+            "type": "z.string()",
+            "validation": "Product name"
+          },
+          {
+            "name": "description",
+            "type": "z.string().nullable()",
+            "validation": "Product description or null"
+          },
+          {
+            "name": "category",
+            "type": "z.enum(['MEN', 'WOMEN', 'KIDS'])",
+            "validation": "Product category"
+          },
+          {
+            "name": "images",
+            "type": "z.array(z.object({ url: z.string(), alt: z.string() }))",
+            "validation": "Ordered array of product images"
+          },
+          {
+            "name": "variants",
+            "type": "z.array(variantResponseSchema)",
+            "validation": "All variants with size, color, price, stock"
+          },
+          {
+            "name": "discount",
+            "type": "z.object({ type: z.enum(['PERCENTAGE', 'FLAT']), value: z.number(), startDate: z.string().nullable(), endDate: z.string().nullable() }).nullable()",
+            "validation": "Active discount or null"
+          },
+          {
+            "name": "status",
+            "type": "z.enum(['ACTIVE', 'INACTIVE', 'DRAFT'])",
+            "validation": "Product status"
+          },
+          {
+            "name": "createdAt",
+            "type": "z.string().datetime()",
+            "validation": "ISO datetime"
+          }
+        ],
+        "inferred_type": "ProductDetail"
+      },
+      {
+        "schema_name": "variantResponseSchema",
+        "file_path": "src/schemas/product.schema.ts",
+        "description": "Schema for a single product variant in API responses",
+        "fields": [
+          {
+            "name": "id",
+            "type": "z.string().cuid()",
+            "validation": "Variant ID"
+          },
+          {
+            "name": "size",
+            "type": "z.string()",
+            "validation": "Size label"
+          },
+          {
+            "name": "color",
+            "type": "z.string()",
+            "validation": "Color name"
+          },
+          {
+            "name": "price",
+            "type": "z.number()",
+            "validation": "Price per unit as number"
+          },
+          {
+            "name": "discountedPrice",
+            "type": "z.number().nullable()",
+            "validation": "Price after discount, null if no discount"
+          },
+          {
+            "name": "stock",
+            "type": "z.number().int()",
+            "validation": "Available stock count"
+          }
+        ],
+        "inferred_type": "VariantResponse"
+      },
+      {
+        "schema_name": "addToCartSchema",
+        "file_path": "src/schemas/cart.schema.ts",
+        "description": "Validates add-to-cart requests — enforces MOQ of 10",
+        "fields": [
+          {
+            "name": "variantId",
+            "type": "z.string().cuid('Invalid variant ID')",
+            "validation": "Required, valid CUID referencing a ProductVariant"
+          },
+          {
+            "name": "quantity",
+            "type": "z.number().int().min(10, 'Minimum order quantity is 10')",
+            "validation": "Required, integer, minimum 10 (MOQ)"
+          }
+        ],
+        "inferred_type": "AddToCartInput"
+      }
+    ],
+    "services": [
+      {
+        "service_name": "productService",
+        "file_path": "src/server/services/product.service.ts",
+        "description": "Handles product listing and detail retrieval for the buyer-facing catalog. Read-only in this module — write operations are added by Inventory & Product Management module.",
+        "methods": [
+          {
+            "method_name": "findMany",
+            "parameters": "(query: CatalogQuery) => Promise<{ items: CatalogProduct[], meta: { total: number, page: number, limit: number, totalPages: number, hasMore: boolean } }>",
+            "business_logic": "1. Build Prisma where clause: status = ACTIVE. 2. If search is provided, add name contains (case-insensitive). 3. If category is provided, add category filter. 4. If sizes are provided, filter products that have at least one variant with matching size AND stock >= 10. 5. If colors are provided, filter products with at least one variant with matching color AND stock >= 10. 6. If priceMin/priceMax provided, filter products with at least one variant price in range. 7. Only include products where total variant stock >= 10 (MOQ). 8. Apply sort: price_asc sorts by minimum variant price ascending, price_desc by maximum variant price descending, newest by createdAt descending. 9. Apply pagination with offset = (page - 1) * limit. 10. For each product, compute: thumbnailUrl (first image by sortOrder), priceMin/priceMax (from variants), discountedPriceMin/discountedPriceMax (apply discount if active), totalStock (sum of variant stock). 11. Return items and pagination meta.",
+            "prisma_operations": [
+              "db.product.findMany({ where, include: { variants: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 }, discount: true }, orderBy, skip, take })",
+              "db.product.count({ where })"
+            ],
+            "error_cases": []
+          },
+          {
+            "method_name": "findById",
+            "parameters": "(id: string) => Promise<ProductDetail>",
+            "business_logic": "1. Find product by ID including all variants (ordered by size, color), all images (ordered by sortOrder), and active discount. 2. If not found, throw NOT_FOUND. 3. If product status is not ACTIVE, throw NOT_FOUND (hide inactive products from buyers). 4. For each variant, compute discountedPrice by applying the discount if one exists and is currently active (within start/end date range). 5. Return full product detail.",
+            "prisma_operations": [
+              "db.product.findUnique({ where: { id }, include: { variants: { orderBy: [{ size: 'asc' }, { color: 'asc' }] }, images: { orderBy: { sortOrder: 'asc' } }, discount: true } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "Product not found or status is not ACTIVE",
+                "error": "AppError.notFound('Product not found')"
+              }
+            ]
+          },
+          {
+            "method_name": "getFilterOptions",
+            "parameters": "() => Promise<{ sizes: string[], colors: string[] }>",
+            "business_logic": "1. Query all distinct size values from ProductVariant where the parent Product is ACTIVE and variant stock >= 10. 2. Query all distinct color values with the same filter. 3. Return sorted arrays of unique sizes and colors.",
+            "prisma_operations": [
+              "db.productVariant.findMany({ where: { product: { status: 'ACTIVE' }, stock: { gte: 10 } }, distinct: ['size'], select: { size: true } })",
+              "db.productVariant.findMany({ where: { product: { status: 'ACTIVE' }, stock: { gte: 10 } }, distinct: ['color'], select: { color: true } })"
+            ],
+            "error_cases": []
+          }
+        ]
+      },
+      {
+        "service_name": "cartService",
+        "file_path": "src/server/services/cart.service.ts",
+        "description": "Manages the server-side shopping cart. This module defines the addItem method — full cart operations (update, remove, get, clear) are added by Cart & Checkout module.",
+        "methods": [
+          {
+            "method_name": "addItem",
+            "parameters": "(userId: string, data: AddToCartInput) => Promise<CartItem>",
+            "business_logic": "1. Find the ProductVariant by variantId. If not found, throw NOT_FOUND. 2. Check variant stock >= requested quantity. If not, throw INSUFFICIENT_STOCK. 3. Validate quantity >= 10 (MOQ). If not, throw BELOW_MOQ. 4. Find or create the Cart for this userId. 5. Check if a CartItem already exists for this variant in the cart. 6. If exists, increment quantity (validate new total still <= stock). 7. If not, create a new CartItem with the variant and quantity. 8. Return the cart item.",
+            "prisma_operations": [
+              "db.productVariant.findUnique({ where: { id: variantId }, include: { product: true } })",
+              "db.cart.upsert({ where: { userId }, create: { userId }, update: {} })",
+              "db.cartItem.findFirst({ where: { cartId, variantId } })",
+              "db.cartItem.upsert({ where: { cartId_variantId: { cartId, variantId } }, create: { cartId, variantId, quantity }, update: { quantity: { increment: quantity } } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "Product variant not found",
+                "error": "AppError.notFound('Product variant not found')"
+              },
+              {
+                "condition": "Requested quantity exceeds available stock",
+                "error": "AppError.badRequest('Insufficient stock. Only X units available.')"
+              },
+              {
+                "condition": "Quantity is below MOQ of 10",
+                "error": "AppError.badRequest('Minimum order quantity is 10 units')"
+              },
+              {
+                "condition": "Product is not ACTIVE",
+                "error": "AppError.badRequest('This product is no longer available')"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "api_routes": [
+      {
+        "method": "GET",
+        "path": "/api/products",
+        "file_path": "src/app/api/products/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": "catalogQuerySchema",
+        "response": {
+          "success": "{ success: true, data: { items: CatalogProduct[], meta: { total: number, page: number, limit: number, totalPages: number, hasMore: boolean } } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "VALIDATION_ERROR",
+            "description": "Query parameters fail Zod validation"
+          }
+        ],
+        "delegates_to": "productService.findMany",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/[id]",
+        "file_path": "src/app/api/products/[id]/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: ProductDetail }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "Product not found or not active"
+          }
+        ],
+        "delegates_to": "productService.findById",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/filter-options",
+        "file_path": "src/app/api/products/filter-options/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { sizes: string[], colors: string[] } }",
+          "status_code": 200
+        },
+        "error_responses": [],
+        "delegates_to": "productService.getFilterOptions",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"]
+      },
+      {
+        "method": "POST",
+        "path": "/api/cart/items",
+        "file_path": "src/app/api/cart/items/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "addToCartSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { cartItem: CartItem } }",
+          "status_code": 201
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "VALIDATION_ERROR",
+            "description": "Request body fails Zod validation"
+          },
+          {
+            "status_code": 400,
+            "error_code": "BELOW_MOQ",
+            "description": "Quantity is below minimum order quantity of 10"
+          },
+          {
+            "status_code": 400,
+            "error_code": "INSUFFICIENT_STOCK",
+            "description": "Requested quantity exceeds available stock"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "Product variant not found"
+          }
+        ],
+        "delegates_to": "cartService.addItem",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"],
+        "_notes": "Extracts userId from session. Cart & Checkout module defines the Cart and CartItem models, but this route is placed here because it's consumed from the Product Detail screen."
+      }
+    ]
+  },
+
+  "frontend": {
+    "screens": [
+      {
+        "screen_name": "Catalog Listing Screen",
+        "screen_type": "listing-grid",
+        "route": "/catalog",
+        "file_path": "src/app/catalog/page.tsx",
+        "page_name": "CatalogPage",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"],
+        "components": [
+          {
+            "component_name": "CatalogHeader",
+            "file_path": "src/client/components/catalog/CatalogHeader.tsx",
+            "type": "layout",
+            "props": [
+              {
+                "name": "totalResults",
+                "type": "number",
+                "description": "Total number of products matching the current filters"
+              },
+              {
+                "name": "sortValue",
+                "type": "SortOption",
+                "description": "Currently selected sort option"
+              },
+              {
+                "name": "onSortChange",
+                "type": "(sort: SortOption) => void",
+                "description": "Callback when sort option changes"
+              }
+            ],
+            "description": "Top bar of the catalog page showing result count and sort dropdown. Sort options: price low-high, price high-low, newest first."
+          },
+          {
+            "component_name": "SearchBar",
+            "file_path": "src/client/components/catalog/SearchBar.tsx",
+            "type": "interactive",
+            "props": [
+              {
+                "name": "value",
+                "type": "string",
+                "description": "Current search query"
+              },
+              {
+                "name": "onChange",
+                "type": "(query: string) => void",
+                "description": "Callback on input change — debounced by the hook"
+              },
+              {
+                "name": "onClear",
+                "type": "() => void",
+                "description": "Callback to clear the search input"
+              }
+            ],
+            "description": "Search input field with a search icon and clear button. Input is debounced (300ms) before triggering a search."
+          },
+          {
+            "component_name": "FilterSidebar",
+            "file_path": "src/client/components/catalog/FilterSidebar.tsx",
+            "type": "interactive",
+            "props": [
+              {
+                "name": "filters",
+                "type": "CatalogFilters",
+                "description": "Currently applied filter values"
+              },
+              {
+                "name": "onFilterChange",
+                "type": "(filters: Partial<CatalogFilters>) => void",
+                "description": "Callback when any filter value changes"
+              },
+              {
+                "name": "onReset",
+                "type": "() => void",
+                "description": "Callback to reset all filters to defaults"
+              },
+              {
+                "name": "availableSizes",
+                "type": "string[]",
+                "description": "Available sizes to populate size filter checkboxes"
+              },
+              {
+                "name": "availableColors",
+                "type": "string[]",
+                "description": "Available colors to populate color filter checkboxes"
+              }
+            ],
+            "description": "Sidebar panel with filter controls: category radio buttons (Men/Women/Kids/All), size checkboxes, color checkboxes, and price range slider (min/max). Includes a 'Reset Filters' button. On mobile, collapses into a toggleable drawer."
+          },
+          {
+            "component_name": "ProductGrid",
+            "file_path": "src/client/components/catalog/ProductGrid.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "products",
+                "type": "CatalogProduct[]",
+                "description": "Array of products to display"
+              },
+              {
+                "name": "isLoading",
+                "type": "boolean",
+                "description": "Whether data is currently loading — shows skeleton cards"
+              }
+            ],
+            "description": "Responsive grid layout displaying ProductCard components. Shows skeleton cards when loading. Adjusts columns: 2 on mobile, 3 on tablet, 4 on desktop."
+          },
+          {
+            "component_name": "ProductCard",
+            "file_path": "src/client/components/catalog/ProductCard.tsx",
+            "type": "interactive",
+            "props": [
+              {
+                "name": "product",
+                "type": "CatalogProduct",
+                "description": "Product data to render"
+              }
+            ],
+            "description": "Single product card showing: thumbnail image, product name, price per unit (with discounted price if applicable), MOQ badge ('Min. 10 units'), and 'Limited Stock' indicator if totalStock < 50. Entire card is clickable — navigates to /catalog/[id]. Shows original price with strikethrough and discounted price when a discount exists."
+          },
+          {
+            "component_name": "ActiveFilters",
+            "file_path": "src/client/components/catalog/ActiveFilters.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "filters",
+                "type": "CatalogFilters",
+                "description": "Currently applied filter values"
+              },
+              {
+                "name": "onRemoveFilter",
+                "type": "(filterKey: string, value?: string) => void",
+                "description": "Callback to remove a specific filter or filter value"
+              },
+              {
+                "name": "onClearAll",
+                "type": "() => void",
+                "description": "Callback to clear all active filters"
+              }
+            ],
+            "description": "Horizontal row of filter chips showing currently active filters. Each chip has an X button to remove it. Hidden when no filters are active."
+          },
+          {
+            "component_name": "Pagination",
+            "file_path": "src/client/components/ui/Pagination.tsx",
+            "type": "interactive",
+            "props": [
+              {
+                "name": "currentPage",
+                "type": "number",
+                "description": "Currently active page (1-indexed)"
+              },
+              {
+                "name": "totalPages",
+                "type": "number",
+                "description": "Total number of pages"
+              },
+              {
+                "name": "onPageChange",
+                "type": "(page: number) => void",
+                "description": "Callback when page changes"
+              }
+            ],
+            "description": "Shared pagination component with previous/next buttons and page number indicators. Placed below the product grid."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useCatalog",
+            "file_path": "src/client/hooks/useCatalog.ts",
+            "consumes_endpoints": ["GET /api/products"],
+            "returns": "{ products: CatalogProduct[], meta: { total: number, page: number, limit: number, totalPages: number, hasMore: boolean }, isLoading: boolean, error: Error | null }",
+            "description": "Primary data-fetching hook for the catalog listing. Accepts filter, sort, search, and pagination parameters. Constructs query string and fetches from GET /api/products. Returns paginated product list with metadata."
+          },
+          {
+            "hook_name": "useCatalogFilters",
+            "file_path": "src/client/hooks/useCatalogFilters.ts",
+            "consumes_endpoints": ["GET /api/products/filter-options"],
+            "returns": "{ filters: CatalogFilters, setFilters: (filters: Partial<CatalogFilters>) => void, resetFilters: () => void, search: string, setSearch: (q: string) => void, sort: SortOption, setSort: (s: SortOption) => void, page: number, setPage: (p: number) => void, availableSizes: string[], availableColors: string[] }",
+            "description": "Manages all catalog filter, search, sort, and pagination state. Syncs state to URL query parameters so filters are shareable and persist on back navigation. Fetches available filter options (sizes, colors) from the API on mount."
+          }
+        ],
+        "validation_schemas": [],
+        "user_interactions": [
+          "Type in search bar to search by product name",
+          "Select category filter (Men/Women/Kids/All)",
+          "Toggle size checkboxes to filter by size",
+          "Toggle color checkboxes to filter by color",
+          "Adjust price range slider",
+          "Remove individual filter chips from active filters bar",
+          "Clear all filters",
+          "Change sort option (price low-high, price high-low, newest)",
+          "Click a product card to navigate to product detail",
+          "Click pagination buttons to navigate between pages"
+        ],
+        "states": {
+          "loading": "ProductGrid shows 8 skeleton cards. FilterSidebar shows shimmer placeholders for filter options.",
+          "empty": "EmptyState component centered in the grid area with message: 'No products match your filters. Try adjusting your search or filters.' and a 'Reset Filters' button.",
+          "error": "ErrorBanner above the grid with message: 'Failed to load products. Please try again.' and a 'Retry' button."
+        }
+      },
+      {
+        "screen_name": "Product Detail Screen",
+        "screen_type": "detail-view",
+        "route": "/catalog/[id]",
+        "file_path": "src/app/catalog/[id]/page.tsx",
+        "page_name": "ProductDetailPage",
+        "auth_required": true,
+        "allowed_roles": ["BUYER"],
+        "components": [
+          {
+            "component_name": "ProductBreadcrumb",
+            "file_path": "src/client/components/catalog/ProductBreadcrumb.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "category",
+                "type": "string",
+                "description": "Product category (e.g., 'Men')"
+              },
+              {
+                "name": "productName",
+                "type": "string",
+                "description": "Product name for the final breadcrumb segment"
+              }
+            ],
+            "description": "Breadcrumb navigation: Catalog > {Category} > {Product Name}. Catalog and Category links navigate back to the listing with the category filter pre-applied."
+          },
+          {
+            "component_name": "ProductImageGallery",
+            "file_path": "src/client/components/catalog/ProductImageGallery.tsx",
+            "type": "interactive",
+            "props": [
+              {
+                "name": "images",
+                "type": "{ url: string, alt: string }[]",
+                "description": "Array of product image URLs and alt text"
+              }
+            ],
+            "description": "Image gallery with a large main image and thumbnail strip below. Clicking a thumbnail swaps the main image. Supports swipe gestures on mobile."
+          },
+          {
+            "component_name": "ProductInfo",
+            "file_path": "src/client/components/catalog/ProductInfo.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "product",
+                "type": "ProductDetail",
+                "description": "Full product data including name, description, category, and discount"
+              }
+            ],
+            "description": "Displays product name, description, category badge, and base price range. If a discount is active, shows original price with strikethrough and discounted price highlighted."
+          },
+          {
+            "component_name": "VariantSelector",
+            "file_path": "src/client/components/catalog/VariantSelector.tsx",
+            "type": "interactive",
+            "props": [
+              {
+                "name": "variants",
+                "type": "VariantResponse[]",
+                "description": "All available variants for this product"
+              },
+              {
+                "name": "selectedVariant",
+                "type": "VariantResponse | null",
+                "description": "Currently selected variant"
+              },
+              {
+                "name": "onVariantChange",
+                "type": "(variant: VariantResponse) => void",
+                "description": "Callback when variant selection changes"
+              }
+            ],
+            "description": "Two-step variant selector: first pick a size (button group), then pick a color (color swatches). Unavailable combinations (zero stock) are shown as disabled. When a variant is selected, its specific price and stock count are displayed."
+          },
+          {
+            "component_name": "QuantitySelector",
+            "file_path": "src/client/components/catalog/QuantitySelector.tsx",
+            "type": "interactive",
+            "props": [
+              {
+                "name": "value",
+                "type": "number",
+                "description": "Current quantity value"
+              },
+              {
+                "name": "onChange",
+                "type": "(quantity: number) => void",
+                "description": "Callback when quantity changes"
+              },
+              {
+                "name": "min",
+                "type": "number",
+                "description": "Minimum allowed quantity (MOQ = 10)"
+              },
+              {
+                "name": "max",
+                "type": "number",
+                "description": "Maximum allowed quantity (available stock for selected variant)"
+              }
+            ],
+            "description": "Numeric input with +/- buttons. Enforces minimum of 10 (MOQ) and maximum of available stock. Shows 'Min. 10 units' helper text."
+          },
+          {
+            "component_name": "StockIndicator",
+            "file_path": "src/client/components/catalog/StockIndicator.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "stock",
+                "type": "number",
+                "description": "Available stock for the selected variant"
+              }
+            ],
+            "description": "Shows stock availability: 'In Stock (X units)' in green when >= 50, 'Limited Stock (X units)' in amber when 10-49, 'Out of Stock' in red when < 10."
+          },
+          {
+            "component_name": "AddToCartButton",
+            "file_path": "src/client/components/catalog/AddToCartButton.tsx",
+            "type": "interactive",
+            "props": [
+              {
+                "name": "onClick",
+                "type": "() => void",
+                "description": "Callback when Add to Cart is clicked"
+              },
+              {
+                "name": "disabled",
+                "type": "boolean",
+                "description": "Disabled when no variant selected or stock unavailable"
+              },
+              {
+                "name": "isLoading",
+                "type": "boolean",
+                "description": "Shows spinner while add-to-cart request is in flight"
+              }
+            ],
+            "description": "Primary CTA button to add the selected variant and quantity to the cart. Disabled until a variant is selected. Shows spinner during the API call. On success, shows a toast confirmation with a 'View Cart' link."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useProductDetail",
+            "file_path": "src/client/hooks/useProductDetail.ts",
+            "consumes_endpoints": ["GET /api/products/[id]"],
+            "returns": "{ product: ProductDetail | null, isLoading: boolean, error: Error | null }",
+            "description": "Fetches a single product by ID including all variants, images, and discount info. Returns null if product not found."
+          },
+          {
+            "hook_name": "useVariantSelection",
+            "file_path": "src/client/hooks/useVariantSelection.ts",
+            "consumes_endpoints": [],
+            "returns": "{ selectedSize: string | null, selectedColor: string | null, selectedVariant: VariantResponse | null, quantity: number, setSize: (size: string) => void, setColor: (color: string) => void, setQuantity: (qty: number) => void, availableColors: string[], isVariantSelected: boolean }",
+            "description": "Client-side state hook managing variant selection logic. When a size is selected, filters available colors to those with stock. When both size and color are selected, resolves the specific variant. Initializes quantity to MOQ (10)."
+          },
+          {
+            "hook_name": "useAddToCart",
+            "file_path": "src/client/hooks/useAddToCart.ts",
+            "consumes_endpoints": ["POST /api/cart/items"],
+            "returns": "{ addToCart: (variantId: string, quantity: number) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Adds a product variant to the cart. Validates quantity >= MOQ (10) before submitting. On success, can trigger a toast notification."
+          }
+        ],
+        "validation_schemas": ["addToCartSchema"],
+        "user_interactions": [
+          "Click product image thumbnails to switch main image",
+          "Swipe images on mobile",
+          "Select a size from the size button group",
+          "Select a color from the color swatches",
+          "Increase or decrease quantity using +/- buttons or direct input",
+          "Click 'Add to Cart' button",
+          "Click breadcrumb links to navigate back to catalog or category",
+          "Click 'View Cart' link in the success toast"
+        ],
+        "states": {
+          "loading": "Skeleton layout with image placeholder, text shimmer blocks for name/description, and disabled selector placeholders.",
+          "empty": "Not applicable — if product not found, show 404-style message: 'This product is no longer available.' with a 'Back to Catalog' link.",
+          "error": "ErrorBanner with message: 'Failed to load product details. Please try again.' and a 'Retry' button."
+        }
+      }
+    ]
+  }
+}

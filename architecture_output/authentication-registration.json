@@ -1,0 +1,978 @@
+{
+  "module_name": "Authentication & Registration",
+  "module_description": "Handles user signup, login, session management, email verification, and password reset for both buyers and the seller",
+  "module_business_logic": "Buyers register with email, password, business name, and phone number. Email verification is sent on signup. Seller account is pre-created via seed data. Login is role-based — buyers redirect to catalog, seller redirects to dashboard. Sessions persist across browser sessions. Password reset uses time-limited email tokens (expires in 1 hour). The existing skeleton User model and Role enum must be replaced with the B2B-specific versions (SELLER/BUYER roles instead of USER/ADMIN).",
+  "depends_on_modules": [],
+
+  "database": {
+    "models": [
+      {
+        "model_name": "User",
+        "description": "Core user account for both buyers and the seller. Extends the skeleton template User with auth-specific fields (password hash, phone, business name, email verification status).",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique identifier"
+          },
+          {
+            "name": "email",
+            "type": "String",
+            "constraints": "@unique",
+            "description": "Login email address, must be unique across all users"
+          },
+          {
+            "name": "passwordHash",
+            "type": "String",
+            "constraints": "",
+            "description": "Bcrypt-hashed password, never exposed in API responses"
+          },
+          {
+            "name": "name",
+            "type": "String",
+            "constraints": "",
+            "description": "Full name of the user"
+          },
+          {
+            "name": "businessName",
+            "type": "String",
+            "constraints": "",
+            "description": "Business/company name for both buyer and seller"
+          },
+          {
+            "name": "phone",
+            "type": "String",
+            "constraints": "",
+            "description": "Contact phone number"
+          },
+          {
+            "name": "role",
+            "type": "Role",
+            "constraints": "@default(BUYER)",
+            "description": "User role — SELLER or BUYER. Defaults to BUYER on registration"
+          },
+          {
+            "name": "emailVerified",
+            "type": "Boolean",
+            "constraints": "@default(false)",
+            "description": "Whether the user has verified their email address"
+          },
+          {
+            "name": "isActive",
+            "type": "Boolean",
+            "constraints": "@default(true)",
+            "description": "Soft-disable flag — inactive users cannot log in"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "Account creation timestamp"
+          },
+          {
+            "name": "updatedAt",
+            "type": "DateTime",
+            "constraints": "@updatedAt",
+            "description": "Last update timestamp"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "sessions",
+            "type": "Session[]",
+            "relation_type": "one-to-many",
+            "annotation": "User has many Sessions",
+            "description": "Active login sessions for this user"
+          },
+          {
+            "field_name": "passwordResetTokens",
+            "type": "PasswordResetToken[]",
+            "relation_type": "one-to-many",
+            "annotation": "User has many PasswordResetTokens",
+            "description": "Password reset tokens issued for this user"
+          },
+          {
+            "field_name": "emailVerificationTokens",
+            "type": "EmailVerificationToken[]",
+            "relation_type": "one-to-many",
+            "annotation": "User has many EmailVerificationTokens",
+            "description": "Email verification tokens issued for this user"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["email"],
+            "type": "unique",
+            "description": "Fast lookup by email for login and duplicate check"
+          },
+          {
+            "fields": ["role"],
+            "type": "index",
+            "description": "Filter users by role for admin queries"
+          }
+        ]
+      },
+      {
+        "model_name": "Session",
+        "description": "Persistent login session. Enables stay-logged-in across browser sessions. Each login creates a new session; logout invalidates it.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique session identifier"
+          },
+          {
+            "name": "userId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the User who owns this session"
+          },
+          {
+            "name": "token",
+            "type": "String",
+            "constraints": "@unique",
+            "description": "Secure random session token sent to client as HTTP-only cookie"
+          },
+          {
+            "name": "expiresAt",
+            "type": "DateTime",
+            "constraints": "",
+            "description": "Session expiration timestamp (e.g., 30 days from creation)"
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "Session creation timestamp"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "user",
+            "type": "User",
+            "relation_type": "many-to-one",
+            "annotation": "@relation(fields: [userId], references: [id], onDelete: Cascade)",
+            "description": "The user who owns this session"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["token"],
+            "type": "unique",
+            "description": "Fast session lookup by token on every authenticated request"
+          },
+          {
+            "fields": ["userId"],
+            "type": "index",
+            "description": "Find all sessions for a user (for logout-all)"
+          },
+          {
+            "fields": ["expiresAt"],
+            "type": "index",
+            "description": "Cleanup expired sessions via scheduled job"
+          }
+        ]
+      },
+      {
+        "model_name": "PasswordResetToken",
+        "description": "Time-limited token for the forgot-password flow. Expires after 1 hour. Invalidated after use.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique identifier"
+          },
+          {
+            "name": "userId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the User requesting the reset"
+          },
+          {
+            "name": "token",
+            "type": "String",
+            "constraints": "@unique",
+            "description": "Secure random token included in the reset email link"
+          },
+          {
+            "name": "expiresAt",
+            "type": "DateTime",
+            "constraints": "",
+            "description": "Token expiration — 1 hour after creation"
+          },
+          {
+            "name": "usedAt",
+            "type": "DateTime",
+            "constraints": "? (nullable)",
+            "description": "Timestamp when this token was consumed. Null means unused."
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "Token creation timestamp"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "user",
+            "type": "User",
+            "relation_type": "many-to-one",
+            "annotation": "@relation(fields: [userId], references: [id], onDelete: Cascade)",
+            "description": "The user who requested this password reset"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["token"],
+            "type": "unique",
+            "description": "Fast lookup when user clicks the reset link"
+          },
+          {
+            "fields": ["userId"],
+            "type": "index",
+            "description": "Find existing tokens for a user to invalidate old ones"
+          }
+        ]
+      },
+      {
+        "model_name": "EmailVerificationToken",
+        "description": "Token sent to the buyer's email on registration to verify ownership. Expires after 24 hours.",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "constraints": "@id @default(cuid())",
+            "description": "Unique identifier"
+          },
+          {
+            "name": "userId",
+            "type": "String",
+            "constraints": "",
+            "description": "Foreign key to the User whose email is being verified"
+          },
+          {
+            "name": "token",
+            "type": "String",
+            "constraints": "@unique",
+            "description": "Secure random token included in the verification email link"
+          },
+          {
+            "name": "expiresAt",
+            "type": "DateTime",
+            "constraints": "",
+            "description": "Token expiration — 24 hours after creation"
+          },
+          {
+            "name": "usedAt",
+            "type": "DateTime",
+            "constraints": "? (nullable)",
+            "description": "Timestamp when this token was consumed. Null means unused."
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "constraints": "@default(now())",
+            "description": "Token creation timestamp"
+          }
+        ],
+        "relations": [
+          {
+            "field_name": "user",
+            "type": "User",
+            "relation_type": "many-to-one",
+            "annotation": "@relation(fields: [userId], references: [id], onDelete: Cascade)",
+            "description": "The user whose email is being verified"
+          }
+        ],
+        "indexes": [
+          {
+            "fields": ["token"],
+            "type": "unique",
+            "description": "Fast lookup when user clicks the verification link"
+          },
+          {
+            "fields": ["userId"],
+            "type": "index",
+            "description": "Find existing tokens for a user to resend or invalidate"
+          }
+        ]
+      }
+    ],
+    "enums": [
+      {
+        "enum_name": "Role",
+        "values": ["SELLER", "BUYER"],
+        "description": "User role in the marketplace. SELLER manages the store, BUYER purchases products. Replaces the skeleton's USER/ADMIN enum."
+      }
+    ],
+    "seed_data": [
+      {
+        "model": "User",
+        "description": "Pre-created seller account so the marketplace has an owner from day one",
+        "records": "One SELLER user with email 'seller@marketplace.com', a hashed default password, businessName 'Marketplace Store', emailVerified true, isActive true"
+      }
+    ]
+  },
+
+  "backend": {
+    "schemas": [
+      {
+        "schema_name": "loginSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates login request payload",
+        "fields": [
+          {
+            "name": "email",
+            "type": "z.string().email()",
+            "validation": "Must be a valid email address"
+          },
+          {
+            "name": "password",
+            "type": "z.string().min(1)",
+            "validation": "Required, non-empty string"
+          }
+        ],
+        "inferred_type": "LoginInput"
+      },
+      {
+        "schema_name": "registerBuyerSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates buyer registration request payload",
+        "fields": [
+          {
+            "name": "email",
+            "type": "z.string().email()",
+            "validation": "Must be a valid email address"
+          },
+          {
+            "name": "password",
+            "type": "z.string().min(8).max(128)",
+            "validation": "Minimum 8 characters, maximum 128 characters"
+          },
+          {
+            "name": "name",
+            "type": "z.string().min(1).max(100)",
+            "validation": "Required, 1-100 characters"
+          },
+          {
+            "name": "businessName",
+            "type": "z.string().min(1).max(200)",
+            "validation": "Required, 1-200 characters"
+          },
+          {
+            "name": "phone",
+            "type": "z.string().min(10).max(15)",
+            "validation": "Required, 10-15 digit phone number"
+          }
+        ],
+        "inferred_type": "RegisterBuyerInput"
+      },
+      {
+        "schema_name": "forgotPasswordSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates forgot password request — email only",
+        "fields": [
+          {
+            "name": "email",
+            "type": "z.string().email()",
+            "validation": "Must be a valid email address"
+          }
+        ],
+        "inferred_type": "ForgotPasswordInput"
+      },
+      {
+        "schema_name": "resetPasswordSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates password reset request — token and new password",
+        "fields": [
+          {
+            "name": "token",
+            "type": "z.string().min(1)",
+            "validation": "Required, the reset token from the email link"
+          },
+          {
+            "name": "password",
+            "type": "z.string().min(8).max(128)",
+            "validation": "New password, minimum 8 characters"
+          }
+        ],
+        "inferred_type": "ResetPasswordInput"
+      },
+      {
+        "schema_name": "verifyEmailSchema",
+        "file_path": "src/schemas/auth.schema.ts",
+        "description": "Validates email verification request — token only",
+        "fields": [
+          {
+            "name": "token",
+            "type": "z.string().min(1)",
+            "validation": "Required, the verification token from the email link"
+          }
+        ],
+        "inferred_type": "VerifyEmailInput"
+      }
+    ],
+    "services": [
+      {
+        "service_name": "authService",
+        "file_path": "src/server/services/auth.service.ts",
+        "description": "Handles all authentication flows: registration, login, logout, email verification, password reset, and session management",
+        "methods": [
+          {
+            "method_name": "registerBuyer",
+            "parameters": "(data: RegisterBuyerInput): Promise<{ user: UserResponse; session: Session }>",
+            "business_logic": "1. Check if a user with the given email already exists. 2. If exists, throw conflict error. 3. Hash the password using bcrypt with 12 salt rounds. 4. Create the User record with role BUYER, emailVerified false. 5. Generate a secure random email verification token. 6. Create an EmailVerificationToken record with 24-hour expiry. 7. Send verification email with the token link (delegate to email utility). 8. Create a new Session with a secure random token and 30-day expiry. 9. Return the user (without passwordHash) and the session.",
+            "db_operations": [
+              "db.user.findUnique({ where: { email } })",
+              "db.user.create({ data: { ...data, passwordHash, role: BUYER } })",
+              "db.emailVerificationToken.create({ data: { userId, token, expiresAt } })",
+              "db.session.create({ data: { userId, token, expiresAt } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "User with this email already exists",
+                "error": "AppError.conflict('A user with this email already exists')"
+              }
+            ]
+          },
+          {
+            "method_name": "login",
+            "parameters": "(data: LoginInput): Promise<{ user: UserResponse; session: Session }>",
+            "business_logic": "1. Find user by email. 2. If not found, throw unauthorized error (generic message to prevent email enumeration). 3. If user.isActive is false, throw unauthorized error. 4. Compare provided password against stored passwordHash using bcrypt. 5. If password doesn't match, throw unauthorized error. 6. Create a new Session with a secure random token and 30-day expiry. 7. Return the user (without passwordHash) and the session.",
+            "db_operations": [
+              "db.user.findUnique({ where: { email } })",
+              "db.session.create({ data: { userId, token, expiresAt } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "User not found or password incorrect or account inactive",
+                "error": "AppError.unauthorized('Invalid email or password')"
+              }
+            ]
+          },
+          {
+            "method_name": "logout",
+            "parameters": "(sessionToken: string): Promise<void>",
+            "business_logic": "1. Delete the session with the given token. 2. If session not found, silently succeed (idempotent).",
+            "db_operations": [
+              "db.session.deleteMany({ where: { token: sessionToken } })"
+            ],
+            "error_cases": []
+          },
+          {
+            "method_name": "validateSession",
+            "parameters": "(sessionToken: string): Promise<UserResponse | null>",
+            "business_logic": "1. Find session by token, include the user relation. 2. If not found, return null. 3. If session.expiresAt is in the past, delete the session and return null. 4. Return the session's user (without passwordHash).",
+            "db_operations": [
+              "db.session.findUnique({ where: { token }, include: { user: true } })",
+              "db.session.delete({ where: { id } }) — only if expired"
+            ],
+            "error_cases": []
+          },
+          {
+            "method_name": "verifyEmail",
+            "parameters": "(data: VerifyEmailInput): Promise<void>",
+            "business_logic": "1. Find the EmailVerificationToken by token. 2. If not found, throw bad request error. 3. If token.usedAt is not null, throw bad request error (already used). 4. If token.expiresAt is in the past, throw bad request error (expired). 5. Update the user's emailVerified to true. 6. Mark the token as used by setting usedAt to now.",
+            "db_operations": [
+              "db.emailVerificationToken.findUnique({ where: { token }, include: { user: true } })",
+              "db.user.update({ where: { id: token.userId }, data: { emailVerified: true } })",
+              "db.emailVerificationToken.update({ where: { id }, data: { usedAt: now() } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "Token not found",
+                "error": "AppError.badRequest('Invalid verification token')"
+              },
+              {
+                "condition": "Token already used",
+                "error": "AppError.badRequest('This verification link has already been used')"
+              },
+              {
+                "condition": "Token expired",
+                "error": "AppError.badRequest('This verification link has expired')"
+              }
+            ]
+          },
+          {
+            "method_name": "forgotPassword",
+            "parameters": "(data: ForgotPasswordInput): Promise<void>",
+            "business_logic": "1. Find user by email. 2. If not found, silently succeed (prevent email enumeration). 3. Invalidate any existing unused password reset tokens for this user by setting usedAt to now. 4. Generate a secure random token. 5. Create a PasswordResetToken with 1-hour expiry. 6. Send password reset email with the token link.",
+            "db_operations": [
+              "db.user.findUnique({ where: { email } })",
+              "db.passwordResetToken.updateMany({ where: { userId, usedAt: null }, data: { usedAt: now() } })",
+              "db.passwordResetToken.create({ data: { userId, token, expiresAt } })"
+            ],
+            "error_cases": []
+          },
+          {
+            "method_name": "resetPassword",
+            "parameters": "(data: ResetPasswordInput): Promise<void>",
+            "business_logic": "1. Find the PasswordResetToken by token. 2. If not found, throw bad request error. 3. If token.usedAt is not null, throw bad request error (already used). 4. If token.expiresAt is in the past, throw bad request error (expired). 5. Hash the new password using bcrypt with 12 salt rounds. 6. Update the user's passwordHash. 7. Mark the token as used. 8. Delete all existing sessions for this user (force re-login everywhere).",
+            "db_operations": [
+              "db.passwordResetToken.findUnique({ where: { token }, include: { user: true } })",
+              "db.user.update({ where: { id: token.userId }, data: { passwordHash } })",
+              "db.passwordResetToken.update({ where: { id }, data: { usedAt: now() } })",
+              "db.session.deleteMany({ where: { userId: token.userId } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "Token not found",
+                "error": "AppError.badRequest('Invalid reset token')"
+              },
+              {
+                "condition": "Token already used",
+                "error": "AppError.badRequest('This reset link has already been used')"
+              },
+              {
+                "condition": "Token expired",
+                "error": "AppError.badRequest('This reset link has expired. Please request a new one.')"
+              }
+            ]
+          },
+          {
+            "method_name": "getCurrentUser",
+            "parameters": "(userId: string): Promise<UserResponse>",
+            "business_logic": "1. Find user by ID. 2. If not found, throw not found error. 3. Return the user (without passwordHash).",
+            "db_operations": [
+              "db.user.findUnique({ where: { id: userId } })"
+            ],
+            "error_cases": [
+              {
+                "condition": "User not found",
+                "error": "AppError.notFound('User')"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "api_routes": [
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "file_path": "src/app/api/auth/register/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "registerBuyerSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { user: UserResponse } }",
+          "status_code": 201
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed — invalid email, password too short, missing required fields"
+          },
+          {
+            "status_code": 409,
+            "error_code": "CONFLICT",
+            "description": "A user with this email already exists"
+          }
+        ],
+        "delegates_to": "authService.registerBuyer",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "file_path": "src/app/api/auth/login/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "loginSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { user: UserResponse, redirectTo: string } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed — invalid email format or missing password"
+          },
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "Invalid email or password"
+          }
+        ],
+        "delegates_to": "authService.login",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "file_path": "src/app/api/auth/logout/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: null }",
+          "status_code": 200
+        },
+        "error_responses": [],
+        "delegates_to": "authService.logout",
+        "auth_required": true,
+        "allowed_roles": ["SELLER", "BUYER"]
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/verify-email",
+        "file_path": "src/app/api/auth/verify-email/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "verifyEmailSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'Email verified successfully' } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Invalid, expired, or already-used verification token"
+          }
+        ],
+        "delegates_to": "authService.verifyEmail",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/forgot-password",
+        "file_path": "src/app/api/auth/forgot-password/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "forgotPasswordSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'If an account with that email exists, a reset link has been sent' } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Validation failed — invalid email format"
+          }
+        ],
+        "delegates_to": "authService.forgotPassword",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/reset-password",
+        "file_path": "src/app/api/auth/reset-password/route.ts",
+        "handler_function": "POST",
+        "request_body_schema": "resetPasswordSchema",
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: { message: 'Password has been reset successfully' } }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 400,
+            "error_code": "BAD_REQUEST",
+            "description": "Invalid, expired, or already-used reset token, or password too short"
+          }
+        ],
+        "delegates_to": "authService.resetPassword",
+        "auth_required": false,
+        "allowed_roles": []
+      },
+      {
+        "method": "GET",
+        "path": "/api/users/me",
+        "file_path": "src/app/api/users/me/route.ts",
+        "handler_function": "GET",
+        "request_body_schema": null,
+        "query_params_schema": null,
+        "response": {
+          "success": "{ success: true, data: UserResponse }",
+          "status_code": 200
+        },
+        "error_responses": [
+          {
+            "status_code": 401,
+            "error_code": "UNAUTHORIZED",
+            "description": "No valid session — user must log in"
+          },
+          {
+            "status_code": 404,
+            "error_code": "NOT_FOUND",
+            "description": "User account no longer exists"
+          }
+        ],
+        "delegates_to": "authService.getCurrentUser",
+        "auth_required": true,
+        "allowed_roles": ["SELLER", "BUYER"]
+      }
+    ]
+  },
+
+  "frontend": {
+    "screens": [
+      {
+        "screen_name": "Login Screen",
+        "screen_type": "form",
+        "route": "/login",
+        "file_path": "src/app/login/page.tsx",
+        "page_name": "LoginPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "LoginForm",
+            "file_path": "src/client/components/auth/LoginForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "onSuccess",
+                "type": "(user: UserResponse, redirectTo: string) => void",
+                "description": "Callback fired after successful login with user data and the role-based redirect path"
+              }
+            ],
+            "description": "Form with email and password inputs, submit button, and inline validation errors. Displays a generic error banner for failed login attempts. Links to registration and forgot password pages."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useLogin",
+            "file_path": "src/client/hooks/useLogin.ts",
+            "consumes_endpoints": ["POST /api/auth/login"],
+            "returns": "{ login: (data: LoginInput) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Handles login API call, sets session cookie on success, and returns loading/error state"
+          }
+        ],
+        "validation_schemas": ["loginSchema"],
+        "user_interactions": [
+          "Enter email and password",
+          "Submit login form",
+          "Navigate to registration page",
+          "Navigate to forgot password page"
+        ],
+        "states": {
+          "loading": "Submit button shows spinner and is disabled during API call",
+          "empty": "Not applicable — form is always shown",
+          "error": "Inline field errors for validation; banner error for invalid credentials"
+        }
+      },
+      {
+        "screen_name": "Buyer Registration Screen",
+        "screen_type": "form",
+        "route": "/register",
+        "file_path": "src/app/register/page.tsx",
+        "page_name": "RegisterPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "RegisterForm",
+            "file_path": "src/client/components/auth/RegisterForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "onSuccess",
+                "type": "(user: UserResponse) => void",
+                "description": "Callback fired after successful registration"
+              }
+            ],
+            "description": "Registration form with fields: email, password, confirm password (client-side only), name, business name, and phone number. Shows inline validation errors. On success, shows a message asking the user to check their email for verification."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useRegister",
+            "file_path": "src/client/hooks/useRegister.ts",
+            "consumes_endpoints": ["POST /api/auth/register"],
+            "returns": "{ register: (data: RegisterBuyerInput) => Promise<void>, isLoading: boolean, error: string | null }",
+            "description": "Handles buyer registration API call and returns loading/error state"
+          }
+        ],
+        "validation_schemas": ["registerBuyerSchema"],
+        "user_interactions": [
+          "Fill in registration fields",
+          "Submit registration form",
+          "Navigate to login page"
+        ],
+        "states": {
+          "loading": "Submit button shows spinner and is disabled during API call",
+          "empty": "Not applicable — form is always shown",
+          "error": "Inline field errors for validation; banner error for duplicate email"
+        }
+      },
+      {
+        "screen_name": "Forgot Password Screen",
+        "screen_type": "form",
+        "route": "/forgot-password",
+        "file_path": "src/app/forgot-password/page.tsx",
+        "page_name": "ForgotPasswordPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "ForgotPasswordForm",
+            "file_path": "src/client/components/auth/ForgotPasswordForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "onSuccess",
+                "type": "() => void",
+                "description": "Callback fired after the reset email request is submitted"
+              }
+            ],
+            "description": "Simple form with email input. On submit, shows a success message regardless of whether the email exists (security). Includes a link back to login."
+          },
+          {
+            "component_name": "ResetPasswordForm",
+            "file_path": "src/client/components/auth/ResetPasswordForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "token",
+                "type": "string",
+                "description": "The reset token extracted from the URL query parameter"
+              },
+              {
+                "name": "onSuccess",
+                "type": "() => void",
+                "description": "Callback fired after password is successfully reset"
+              }
+            ],
+            "description": "Form with new password and confirm password fields. Shown when user clicks the reset link from their email. On success, redirects to login with a success message."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useForgotPassword",
+            "file_path": "src/client/hooks/useForgotPassword.ts",
+            "consumes_endpoints": ["POST /api/auth/forgot-password"],
+            "returns": "{ sendResetLink: (data: ForgotPasswordInput) => Promise<void>, isLoading: boolean, error: string | null, isSuccess: boolean }",
+            "description": "Handles forgot password API call and tracks success/loading/error state"
+          },
+          {
+            "hook_name": "useResetPassword",
+            "file_path": "src/client/hooks/useResetPassword.ts",
+            "consumes_endpoints": ["POST /api/auth/reset-password"],
+            "returns": "{ resetPassword: (data: ResetPasswordInput) => Promise<void>, isLoading: boolean, error: string | null, isSuccess: boolean }",
+            "description": "Handles password reset API call with token and new password"
+          }
+        ],
+        "validation_schemas": ["forgotPasswordSchema", "resetPasswordSchema"],
+        "user_interactions": [
+          "Enter email to receive reset link",
+          "Submit forgot password form",
+          "Enter new password on reset page",
+          "Submit new password",
+          "Navigate back to login"
+        ],
+        "states": {
+          "loading": "Submit button shows spinner and is disabled during API call",
+          "empty": "Not applicable — form is always shown",
+          "error": "Inline validation errors; banner error for invalid/expired token on reset page"
+        }
+      },
+      {
+        "screen_name": "Reset Password Screen",
+        "screen_type": "form",
+        "route": "/reset-password",
+        "file_path": "src/app/reset-password/page.tsx",
+        "page_name": "ResetPasswordPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "ResetPasswordForm",
+            "file_path": "src/client/components/auth/ResetPasswordForm.tsx",
+            "type": "form",
+            "props": [
+              {
+                "name": "token",
+                "type": "string",
+                "description": "The reset token extracted from the URL query parameter"
+              },
+              {
+                "name": "onSuccess",
+                "type": "() => void",
+                "description": "Callback fired after password is successfully reset"
+              }
+            ],
+            "description": "Form with new password and confirm password fields. Validates token from URL. On success, redirects to login."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useResetPassword",
+            "file_path": "src/client/hooks/useResetPassword.ts",
+            "consumes_endpoints": ["POST /api/auth/reset-password"],
+            "returns": "{ resetPassword: (data: ResetPasswordInput) => Promise<void>, isLoading: boolean, error: string | null, isSuccess: boolean }",
+            "description": "Handles password reset API call with token and new password"
+          }
+        ],
+        "validation_schemas": ["resetPasswordSchema"],
+        "user_interactions": [
+          "Enter new password",
+          "Confirm new password",
+          "Submit reset form",
+          "Navigate to login"
+        ],
+        "states": {
+          "loading": "Submit button shows spinner and is disabled during API call",
+          "empty": "Not applicable — form is always shown",
+          "error": "Banner error for invalid or expired token; inline validation for password requirements"
+        }
+      },
+      {
+        "screen_name": "Email Verification Screen",
+        "screen_type": "confirmation",
+        "route": "/verify-email",
+        "file_path": "src/app/verify-email/page.tsx",
+        "page_name": "VerifyEmailPage",
+        "auth_required": false,
+        "allowed_roles": [],
+        "components": [
+          {
+            "component_name": "EmailVerificationStatus",
+            "file_path": "src/client/components/auth/EmailVerificationStatus.tsx",
+            "type": "display",
+            "props": [
+              {
+                "name": "token",
+                "type": "string",
+                "description": "The verification token extracted from the URL query parameter"
+              }
+            ],
+            "description": "Auto-submits the verification token on mount. Shows a loading spinner during verification, a success message with login link on success, or an error message with option to request a new verification email on failure."
+          }
+        ],
+        "hooks": [
+          {
+            "hook_name": "useVerifyEmail",
+            "file_path": "src/client/hooks/useVerifyEmail.ts",
+            "consumes_endpoints": ["POST /api/auth/verify-email"],
+            "returns": "{ verify: (token: string) => Promise<void>, isLoading: boolean, error: string | null, isSuccess: boolean }",
+            "description": "Handles email verification API call and tracks verification result state"
+          }
+        ],
+        "validation_schemas": ["verifyEmailSchema"],
+        "user_interactions": [
+          "Page auto-verifies on load",
+          "Navigate to login on success",
+          "Request new verification email on failure"
+        ],
+        "states": {
+          "loading": "Centered spinner with 'Verifying your email...' text",
+          "empty": "Not applicable",
+          "error": "Error message with description (expired, invalid, already used) and a link to request a new verification email"
+        }
+      }
+    ]
+  }
+}
