@@ -1,0 +1,460 @@
+{
+  "moduleId": "M-RESGEN",
+  "contractVersion": "v1.2.0",
+  "status": "draft",
+
+  "navigationMap": {
+    "rootScreenId": "S-RESGEN-01",
+    "flowType": "wizard",
+    "sidebarGroup": {
+      "groupId": "grp-resgen",
+      "label": "Generate Resume",
+      "icon": "file-plus",
+      "order": 3,
+      "items": [
+        {
+          "screenId": "S-RESGEN-01",
+          "label": "Generate Resume",
+          "visible": true
+        }
+      ]
+    }
+  },
+
+  "layout": {
+    "template": "wizard",
+    "containerRoute": "/generate",
+    "sidebar": {
+      "visible": true,
+      "order": 3
+    },
+    "breadcrumb": {
+      "label": "Generate Resume",
+      "show": true
+    },
+    "wizardProgress": {
+      "steps": [
+        {
+          "stepIndex": 0,
+          "label": "Job Description",
+          "screenId": "S-RESGEN-01"
+        },
+        {
+          "stepIndex": 1,
+          "label": "AI Tailoring Preview",
+          "screenId": "S-RESGEN-02"
+        },
+        {
+          "stepIndex": 2,
+          "label": "Choose Template",
+          "screenId": "S-RESGEN-03"
+        }
+      ]
+    },
+    "screensPositioning": {
+      "arrangement": "full-page",
+      "regions": [
+        {
+          "regionId": "resgen-main",
+          "zone": "main",
+          "basis": "100%",
+          "minWidth": null,
+          "scrollable": true,
+          "screens": [
+            {
+              "screenId": "S-RESGEN-01",
+              "visibility": "conditional",
+              "condition": "wizardStep === 0",
+              "order": 1
+            },
+            {
+              "screenId": "S-RESGEN-02",
+              "visibility": "conditional",
+              "condition": "wizardStep === 1",
+              "order": 2
+            },
+            {
+              "screenId": "S-RESGEN-03",
+              "visibility": "conditional",
+              "condition": "wizardStep === 2",
+              "order": 3
+            }
+          ]
+        }
+      ]
+    },
+    "standardControls": [
+      {
+        "id": "ctrl-resgen-cancel",
+        "type": "cancel_link",
+        "label": "Cancel",
+        "position": "top_left",
+        "visualPriority": "secondary"
+      },
+      {
+        "id": "ctrl-resgen-back",
+        "type": "back_button",
+        "label": "Back",
+        "position": "bottom_left",
+        "visualPriority": "secondary"
+      },
+      {
+        "id": "ctrl-resgen-next",
+        "type": "submit_button",
+        "label": "Next",
+        "position": "bottom_right",
+        "visualPriority": "primary"
+      }
+    ]
+  },
+
+  "screens": [
+    {
+      "screenId": "S-RESGEN-01",
+      "name": "JD Input",
+      "type": "input_driven",
+      "navigation": {
+        "route": "/generate",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [
+        {
+          "field": "profileReadinessStatus",
+          "source": "api",
+          "schemaRef": "zod://ProfileReadinessResponseSchema"
+        }
+      ],
+      "dataCaptured": [
+        {
+          "field": "jobDescriptionText",
+          "required": true,
+          "schemaRef": "zod://JDInputRequestSchema"
+        },
+        {
+          "field": "jobTitle",
+          "required": false,
+          "schemaRef": "zod://JDInputRequestSchema"
+        },
+        {
+          "field": "companyName",
+          "required": false,
+          "schemaRef": "zod://JDInputRequestSchema"
+        },
+        {
+          "field": "jobUrl",
+          "required": false,
+          "schemaRef": "zod://JDInputRequestSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-RESGEN-01-GENERATE",
+          "type": "api_call",
+          "description": "Submit the job description text and optional metadata to trigger AI resume generation. Button is enabled only when JD text is non-empty and profile has sufficient data.",
+          "targetScreenId": "S-RESGEN-02",
+          "endpointOperationId": "generateTailoredResume",
+          "onSuccess": {
+            "behavior": "wizard_next",
+            "targetScreenId": "S-RESGEN-02"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESGEN-01-CANCEL",
+          "type": "navigation",
+          "description": "Cancel and navigate back to the dashboard or resume management.",
+          "targetScreenId": "S-RESMGMT-01",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESGEN-01-NAV-PROFILE",
+          "type": "navigation",
+          "description": "Navigate to profile page when user has insufficient profile data (no skills or experiences).",
+          "targetScreenId": "S-PROFILE-01",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": null,
+        "empty": null,
+        "error": "Unable to start generation. Please check your input and try again.",
+        "profileInsufficient": "You need at least one skill and one experience in your profile to generate a resume."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "checkProfileReadiness",
+          "method": "GET",
+          "path": "/api/profile/readiness",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://ProfileReadinessResponseSchema",
+          "errorSchemaRef": "zod://ResgenErrorSchema"
+        },
+        {
+          "operationId": "generateTailoredResume",
+          "method": "POST",
+          "path": "/api/resumes/generate",
+          "requestSchemaRef": "zod://JDInputRequestSchema",
+          "responseSchemaRef": "zod://GenerateResumeResponseSchema",
+          "errorSchemaRef": "zod://ResgenErrorSchema"
+        }
+      ]
+    },
+    {
+      "screenId": "S-RESGEN-02",
+      "name": "AI Tailoring Preview",
+      "type": "api_driven",
+      "navigation": {
+        "route": "/generate/preview",
+        "parentScreenId": "S-RESGEN-01"
+      },
+      "dataDisplayed": [
+        {
+          "field": "selectedSkills",
+          "source": "api",
+          "schemaRef": "zod://GenerateResumeResponseSchema"
+        },
+        {
+          "field": "selectedExperiences",
+          "source": "api",
+          "schemaRef": "zod://GenerateResumeResponseSchema"
+        },
+        {
+          "field": "selectedEducation",
+          "source": "api",
+          "schemaRef": "zod://GenerateResumeResponseSchema"
+        },
+        {
+          "field": "rewrittenBulletPoints",
+          "source": "api",
+          "schemaRef": "zod://GenerateResumeResponseSchema"
+        },
+        {
+          "field": "summaryStatement",
+          "source": "api",
+          "schemaRef": "zod://GenerateResumeResponseSchema"
+        }
+      ],
+      "dataCaptured": [],
+      "interactions": [
+        {
+          "id": "INT-RESGEN-02-PROCEED",
+          "type": "navigation",
+          "description": "Accept the AI-tailored content and proceed to template selection.",
+          "targetScreenId": "S-RESGEN-03",
+          "endpointOperationId": null,
+          "onSuccess": {
+            "behavior": "wizard_next",
+            "targetScreenId": "S-RESGEN-03"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESGEN-02-BACK",
+          "type": "navigation",
+          "description": "Go back to JD Input to modify the job description and regenerate.",
+          "targetScreenId": "S-RESGEN-01",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESGEN-02-RETRY",
+          "type": "api_call",
+          "description": "Retry AI generation if the previous attempt failed.",
+          "targetScreenId": null,
+          "endpointOperationId": "generateTailoredResume",
+          "onSuccess": {
+            "behavior": "reload",
+            "targetScreenId": "S-RESGEN-02"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESGEN-02-CANCEL",
+          "type": "navigation",
+          "description": "Cancel the entire generation flow and return to resume management.",
+          "targetScreenId": "S-RESMGMT-01",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Analyzing job description and tailoring your resume... This may take up to 30 seconds.",
+        "empty": null,
+        "error": "AI generation failed. Please try again or go back to modify your job description."
+      },
+      "endpointProposals": []
+    },
+    {
+      "screenId": "S-RESGEN-03",
+      "name": "Template Selector",
+      "type": "api_driven",
+      "navigation": {
+        "route": "/generate/template",
+        "parentScreenId": "S-RESGEN-02"
+      },
+      "dataDisplayed": [
+        {
+          "field": "templates",
+          "source": "api",
+          "schemaRef": "zod://TemplateListResponseSchema"
+        },
+        {
+          "field": "templatePreview",
+          "source": "api",
+          "schemaRef": "zod://TemplatePreviewResponseSchema"
+        }
+      ],
+      "dataCaptured": [
+        {
+          "field": "selectedTemplateId",
+          "required": true,
+          "schemaRef": "zod://FinalizeResumeRequestSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-RESGEN-03-SELECT-TEMPLATE",
+          "type": "api_call",
+          "description": "Preview the tailored content applied to the selected template.",
+          "targetScreenId": null,
+          "endpointOperationId": "previewTemplate",
+          "onSuccess": {
+            "behavior": "inline_update",
+            "targetScreenId": null
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESGEN-03-FINALIZE",
+          "type": "api_call",
+          "description": "Finalize the resume with the selected template and transition to the Resume Editor module.",
+          "targetScreenId": "S-EDITOR-01",
+          "endpointOperationId": "finalizeResume",
+          "onSuccess": {
+            "behavior": "redirect",
+            "targetScreenId": "S-EDITOR-01"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESGEN-03-BACK",
+          "type": "navigation",
+          "description": "Go back to the AI Tailoring Preview screen.",
+          "targetScreenId": "S-RESGEN-02",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESGEN-03-CANCEL",
+          "type": "navigation",
+          "description": "Cancel the entire generation flow and return to resume management.",
+          "targetScreenId": "S-RESMGMT-01",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Loading templates...",
+        "empty": "No templates available. Please contact support.",
+        "error": "Unable to load templates. Please try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "listTemplates",
+          "method": "GET",
+          "path": "/api/templates",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://TemplateListResponseSchema",
+          "errorSchemaRef": "zod://ResgenErrorSchema"
+        },
+        {
+          "operationId": "previewTemplate",
+          "method": "POST",
+          "path": "/api/resumes/{resumeId}/preview",
+          "requestSchemaRef": "zod://TemplatePreviewRequestSchema",
+          "responseSchemaRef": "zod://TemplatePreviewResponseSchema",
+          "errorSchemaRef": "zod://ResgenErrorSchema"
+        },
+        {
+          "operationId": "finalizeResume",
+          "method": "POST",
+          "path": "/api/resumes/{resumeId}/finalize",
+          "requestSchemaRef": "zod://FinalizeResumeRequestSchema",
+          "responseSchemaRef": "zod://FinalizeResumeResponseSchema",
+          "errorSchemaRef": "zod://ResgenErrorSchema"
+        }
+      ]
+    }
+  ],
+
+  "assumptions": [
+    {
+      "id": "A-RESGEN-001",
+      "text": "The Resume Generation module uses the authenticated app shell with sidebar visible. The wizard steps (JD Input, AI Preview, Template Selector) are not individual sidebar entries; only the top-level 'Generate Resume' entry appears in the sidebar, landing on JD Input.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-002",
+      "text": "The wizard flow is linear: users must progress through JD Input -> AI Tailoring Preview -> Template Selector in order. Users can navigate backward but cannot skip ahead.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-003",
+      "text": "After finalizing template selection, the user is redirected to the Resume Editor (S-EDITOR-01) in the M-EDITOR module. The generated resume ID is passed as a route parameter.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-004",
+      "text": "Profile readiness (at least one skill and one experience) is checked on mount of the JD Input screen via a lightweight API call. The Generate button is disabled until both JD text is non-empty and profile is sufficient.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-005",
+      "text": "The AI generation call (generateTailoredResume) is a long-running request that may take up to 30 seconds. The UI must display a progress/loading indicator during this time.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-006",
+      "text": "Each JD submission creates a new, independent resume entity on the backend (BR-RESGEN-02). The generated resumeId is returned in the response and used in subsequent template preview and finalize calls.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-007",
+      "text": "The optional JD metadata fields (jobTitle, companyName, jobUrl) from F-RESGEN-02 are included in the JD Input form but are non-MVP. They will be rendered but may be hidden behind a collapsible 'Additional Details' section.",
+      "severity": "low",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-008",
+      "text": "Template previews show a thumbnail image of the template layout. When selected, a larger preview with the user's actual tailored content rendered into the template is shown via the previewTemplate endpoint.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-009",
+      "text": "Cancel from any step in the wizard returns the user to the Resume Management screen (S-RESMGMT-01). No draft is saved unless explicitly implemented in a future iteration.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-RESGEN-010",
+      "text": "The AI Tailoring Preview (S-RESGEN-02) displays structured sections (skills, experiences with rewritten bullets, education, summary) in a read-only format. Inline editing is deferred to the Editor module.",
+      "severity": "medium",
+      "state": "open"
+    }
+  ]
+}

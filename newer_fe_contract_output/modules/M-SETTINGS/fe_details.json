@@ -1,0 +1,439 @@
+{
+  "moduleId": "M-SETTINGS",
+  "contractVersion": "v1.2.0",
+  "status": "draft",
+
+  "navigationMap": {
+    "rootScreenId": "S-SET-01",
+    "flowType": "tabbed",
+    "sidebarGroup": {
+      "groupId": "grp-settings",
+      "label": "Settings",
+      "icon": "settings",
+      "order": 90,
+      "items": [
+        {
+          "screenId": "S-SET-01",
+          "label": "Settings",
+          "route": "/settings",
+          "visible": true
+        }
+      ]
+    }
+  },
+
+  "layout": {
+    "template": "tab_content",
+    "containerRoute": "/settings",
+    "sidebar": {
+      "visible": true,
+      "order": 90
+    },
+    "breadcrumb": {
+      "label": "Settings",
+      "show": true
+    },
+    "screensPositioning": {
+      "arrangement": "tabbed",
+      "regions": [
+        {
+          "regionId": "settings-tabs",
+          "zone": "main",
+          "basis": "100%",
+          "minWidth": null,
+          "scrollable": true,
+          "screens": [
+            {
+              "screenId": "S-SET-01",
+              "visibility": "conditional",
+              "condition": "activeTab === 'account'",
+              "order": 1,
+              "tabLabel": "Account",
+              "tabDefault": true
+            },
+            {
+              "screenId": "S-SET-02",
+              "visibility": "conditional",
+              "condition": "activeTab === 'profile'",
+              "order": 2,
+              "tabLabel": "Profile",
+              "tabDefault": false
+            }
+          ]
+        }
+      ]
+    },
+    "standardControls": [
+      {
+        "id": "ctrl-save-email",
+        "type": "submit",
+        "label": "Update Email",
+        "position": "form_footer",
+        "visualPriority": "primary"
+      },
+      {
+        "id": "ctrl-cancel-email",
+        "type": "cancel_button",
+        "label": "Cancel",
+        "position": "form_footer",
+        "visualPriority": "secondary"
+      },
+      {
+        "id": "ctrl-save-password",
+        "type": "submit",
+        "label": "Update Password",
+        "position": "form_footer",
+        "visualPriority": "primary"
+      },
+      {
+        "id": "ctrl-cancel-password",
+        "type": "cancel_button",
+        "label": "Cancel",
+        "position": "form_footer",
+        "visualPriority": "secondary"
+      },
+      {
+        "id": "ctrl-delete-account",
+        "type": "destructive_button",
+        "label": "Delete Account",
+        "position": "section_footer",
+        "visualPriority": "danger"
+      },
+      {
+        "id": "ctrl-confirm-delete",
+        "type": "destructive_button",
+        "label": "Permanently Delete My Account",
+        "position": "modal_footer",
+        "visualPriority": "danger"
+      },
+      {
+        "id": "ctrl-cancel-delete",
+        "type": "cancel_button",
+        "label": "Cancel",
+        "position": "modal_footer",
+        "visualPriority": "secondary"
+      },
+      {
+        "id": "ctrl-save-template-pref",
+        "type": "submit",
+        "label": "Save Preference",
+        "position": "form_footer",
+        "visualPriority": "primary"
+      },
+      {
+        "id": "ctrl-cancel-template-pref",
+        "type": "cancel_button",
+        "label": "Cancel",
+        "position": "form_footer",
+        "visualPriority": "secondary"
+      }
+    ]
+  },
+
+  "screens": [
+    {
+      "screenId": "S-SET-01",
+      "name": "Account Settings",
+      "type": "input_driven",
+      "navigation": {
+        "route": "/settings?tab=account",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [
+        {
+          "field": "currentEmail",
+          "source": "api",
+          "schemaRef": "zod://CurrentAccountInfoSchema"
+        }
+      ],
+      "dataCaptured": [
+        {
+          "field": "newEmail",
+          "required": true,
+          "schemaRef": "zod://ChangeEmailRequestSchema"
+        },
+        {
+          "field": "currentPasswordForEmail",
+          "required": true,
+          "schemaRef": "zod://ChangeEmailRequestSchema"
+        },
+        {
+          "field": "currentPassword",
+          "required": true,
+          "schemaRef": "zod://ChangePasswordRequestSchema"
+        },
+        {
+          "field": "newPassword",
+          "required": true,
+          "schemaRef": "zod://ChangePasswordRequestSchema"
+        },
+        {
+          "field": "confirmNewPassword",
+          "required": true,
+          "schemaRef": "zod://ChangePasswordRequestSchema"
+        },
+        {
+          "field": "deleteConfirmationText",
+          "required": true,
+          "schemaRef": "zod://DeleteAccountRequestSchema"
+        },
+        {
+          "field": "deleteConfirmationPassword",
+          "required": true,
+          "schemaRef": "zod://DeleteAccountRequestSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-SET-01-CHANGE-EMAIL",
+          "type": "api_call",
+          "description": "Submit change email form. Requires new email and current password for re-authentication.",
+          "targetScreenId": null,
+          "endpointOperationId": "changeEmail",
+          "onSuccess": {
+            "behavior": "toast_and_stay",
+            "message": "Email updated successfully."
+          },
+          "onCancel": {
+            "behavior": "reset_form"
+          }
+        },
+        {
+          "id": "INT-SET-01-CHANGE-PASSWORD",
+          "type": "api_call",
+          "description": "Submit change password form. Requires current password and new password with confirmation.",
+          "targetScreenId": null,
+          "endpointOperationId": "changePassword",
+          "onSuccess": {
+            "behavior": "toast_and_stay",
+            "message": "Password updated successfully."
+          },
+          "onCancel": {
+            "behavior": "reset_form"
+          }
+        },
+        {
+          "id": "INT-SET-01-DELETE-ACCOUNT-OPEN",
+          "type": "modal_open",
+          "description": "Open the delete account confirmation modal.",
+          "targetScreenId": null,
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-SET-01-DELETE-ACCOUNT-CONFIRM",
+          "type": "api_call",
+          "description": "Confirm account deletion. User must type 'DELETE' and enter current password. On success, all data is permanently removed and user is redirected to Sign Up.",
+          "targetScreenId": null,
+          "endpointOperationId": "deleteAccount",
+          "onSuccess": {
+            "behavior": "redirect",
+            "targetScreenId": "S-AUTH-01"
+          },
+          "onCancel": {
+            "behavior": "close_modal"
+          }
+        },
+        {
+          "id": "INT-SET-01-LOAD-ACCOUNT",
+          "type": "api_call",
+          "description": "Load the current account info (email) to display in the settings form.",
+          "targetScreenId": null,
+          "endpointOperationId": "getAccountInfo",
+          "onSuccess": {
+            "behavior": "populate_display"
+          },
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Loading account settings...",
+        "empty": null,
+        "error": "Unable to load account settings. Please try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "getAccountInfo",
+          "method": "GET",
+          "path": "/api/settings/account",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://CurrentAccountInfoSchema",
+          "errorSchemaRef": "zod://SettingsErrorSchema"
+        },
+        {
+          "operationId": "changeEmail",
+          "method": "PUT",
+          "path": "/api/settings/account/email",
+          "requestSchemaRef": "zod://ChangeEmailRequestSchema",
+          "responseSchemaRef": "zod://ChangeEmailResponseSchema",
+          "errorSchemaRef": "zod://SettingsErrorSchema"
+        },
+        {
+          "operationId": "changePassword",
+          "method": "PUT",
+          "path": "/api/settings/account/password",
+          "requestSchemaRef": "zod://ChangePasswordRequestSchema",
+          "responseSchemaRef": "zod://ChangePasswordResponseSchema",
+          "errorSchemaRef": "zod://SettingsErrorSchema"
+        },
+        {
+          "operationId": "deleteAccount",
+          "method": "DELETE",
+          "path": "/api/settings/account",
+          "requestSchemaRef": "zod://DeleteAccountRequestSchema",
+          "responseSchemaRef": null,
+          "errorSchemaRef": "zod://SettingsErrorSchema"
+        }
+      ]
+    },
+    {
+      "screenId": "S-SET-02",
+      "name": "Profile Settings",
+      "type": "input_driven",
+      "navigation": {
+        "route": "/settings?tab=profile",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [
+        {
+          "field": "availableTemplates",
+          "source": "api",
+          "schemaRef": "zod://AvailableTemplatesResponseSchema"
+        },
+        {
+          "field": "currentDefaultTemplateId",
+          "source": "api",
+          "schemaRef": "zod://ProfilePreferencesResponseSchema"
+        }
+      ],
+      "dataCaptured": [
+        {
+          "field": "defaultTemplateId",
+          "required": true,
+          "schemaRef": "zod://UpdateTemplatePreferenceRequestSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-SET-02-LOAD-PREFS",
+          "type": "api_call",
+          "description": "Load current profile preferences including the current default template selection.",
+          "targetScreenId": null,
+          "endpointOperationId": "getProfilePreferences",
+          "onSuccess": {
+            "behavior": "populate_display"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-SET-02-LOAD-TEMPLATES",
+          "type": "api_call",
+          "description": "Load the list of available templates for the user to choose from.",
+          "targetScreenId": null,
+          "endpointOperationId": "getAvailableTemplates",
+          "onSuccess": {
+            "behavior": "populate_display"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-SET-02-SAVE-TEMPLATE",
+          "type": "api_call",
+          "description": "Save the selected default template preference.",
+          "targetScreenId": null,
+          "endpointOperationId": "updateTemplatePreference",
+          "onSuccess": {
+            "behavior": "toast_and_stay",
+            "message": "Default template preference saved."
+          },
+          "onCancel": {
+            "behavior": "reset_form"
+          }
+        }
+      ],
+      "states": {
+        "loading": "Loading profile preferences...",
+        "empty": "No templates available.",
+        "error": "Unable to load profile preferences. Please try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "getProfilePreferences",
+          "method": "GET",
+          "path": "/api/settings/profile/preferences",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://ProfilePreferencesResponseSchema",
+          "errorSchemaRef": "zod://SettingsErrorSchema"
+        },
+        {
+          "operationId": "getAvailableTemplates",
+          "method": "GET",
+          "path": "/api/templates",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://AvailableTemplatesResponseSchema",
+          "errorSchemaRef": "zod://SettingsErrorSchema"
+        },
+        {
+          "operationId": "updateTemplatePreference",
+          "method": "PUT",
+          "path": "/api/settings/profile/preferences/template",
+          "requestSchemaRef": "zod://UpdateTemplatePreferenceRequestSchema",
+          "responseSchemaRef": "zod://UpdateTemplatePreferenceResponseSchema",
+          "errorSchemaRef": "zod://SettingsErrorSchema"
+        }
+      ]
+    }
+  ],
+
+  "assumptions": [
+    {
+      "id": "A-SET-001",
+      "text": "Settings uses the authenticated shell layout with sidebar visible. 'Settings' appears as a top-level sidebar entry, and Account/Profile are rendered as tabs within the same container route, not as separate sidebar items.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-SET-002",
+      "text": "Change Email and Change Password are rendered as separate form sections within the Account Settings tab, each with their own submit and cancel buttons.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-SET-003",
+      "text": "Delete Account is triggered via a button that opens a confirmation modal. The modal requires the user to type 'DELETE' and enter their current password before the destructive action is executed.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-SET-004",
+      "text": "After successful account deletion, the user is redirected to the Sign Up page (S-AUTH-01) defined in the M-AUTH module, as the account no longer exists.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-SET-005",
+      "text": "The Profile Settings tab (F-SET-03) is non-MVP and will be rendered with a coming-soon state or hidden entirely until the feature is enabled.",
+      "severity": "low",
+      "state": "open"
+    },
+    {
+      "id": "A-SET-006",
+      "text": "The getAvailableTemplates endpoint may be shared with the M-RESGEN module. The endpoint path /api/templates is proposed here but should be reconciled with the template listing endpoint in M-RESGEN during integration.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-SET-007",
+      "text": "Re-authentication for email and password changes is handled by requiring the current password in the request body (BR-SET-01), not by a separate re-auth flow or session step-up.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-SET-008",
+      "text": "The Change Password form includes a confirmNewPassword field to prevent typos, even though the requirement only mentions 'new password with confirmation'.",
+      "severity": "low",
+      "state": "open"
+    }
+  ]
+}

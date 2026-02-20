@@ -1,0 +1,339 @@
+{
+  "moduleId": "M-RESMGMT",
+  "contractVersion": "v1.2.0",
+  "status": "draft",
+
+  "navigationMap": {
+    "rootScreenId": "S-RESMGMT-01",
+    "flowType": "hub-and-spoke",
+    "sidebarGroup": {
+      "groupId": "grp-resmgmt",
+      "label": "My Resumes",
+      "icon": "FileText",
+      "order": 3,
+      "items": [
+        {
+          "screenId": "S-RESMGMT-01",
+          "label": "My Resumes",
+          "route": "/resumes",
+          "visible": true
+        }
+      ]
+    }
+  },
+
+  "layout": {
+    "template": "page",
+    "containerRoute": "/resumes",
+    "sidebar": {
+      "visible": true,
+      "order": 3
+    },
+    "breadcrumb": {
+      "label": "My Resumes",
+      "show": true
+    },
+    "screensPositioning": {
+      "arrangement": "full-page",
+      "regions": [
+        {
+          "regionId": "resmgmt-main",
+          "zone": "main",
+          "basis": "100%",
+          "minWidth": null,
+          "scrollable": true,
+          "screens": [
+            {
+              "screenId": "S-RESMGMT-01",
+              "visibility": "conditional",
+              "condition": "route === '/resumes'",
+              "order": 1
+            },
+            {
+              "screenId": "S-RESMGMT-02",
+              "visibility": "conditional",
+              "condition": "route.match(/^\\/resumes\\/[^/]+$/)",
+              "order": 2
+            }
+          ]
+        }
+      ]
+    },
+    "standardControls": [
+      {
+        "id": "ctrl-resmgmt-back-to-list",
+        "type": "cancel_link",
+        "label": "Back to My Resumes",
+        "position": "top_left",
+        "visualPriority": "secondary"
+      }
+    ]
+  },
+
+  "screens": [
+    {
+      "screenId": "S-RESMGMT-01",
+      "name": "My Resumes Dashboard",
+      "type": "api_driven",
+      "navigation": {
+        "route": "/resumes",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [
+        {
+          "field": "resumes",
+          "source": "api",
+          "schemaRef": "zod://ResumeListResponseSchema"
+        },
+        {
+          "field": "resumes[].id",
+          "source": "api",
+          "schemaRef": "zod://ResumeListItemSchema"
+        },
+        {
+          "field": "resumes[].jobTitle",
+          "source": "api",
+          "schemaRef": "zod://ResumeListItemSchema"
+        },
+        {
+          "field": "resumes[].companyName",
+          "source": "api",
+          "schemaRef": "zod://ResumeListItemSchema"
+        },
+        {
+          "field": "resumes[].createdAt",
+          "source": "api",
+          "schemaRef": "zod://ResumeListItemSchema"
+        },
+        {
+          "field": "resumes[].templateName",
+          "source": "api",
+          "schemaRef": "zod://ResumeListItemSchema"
+        },
+        {
+          "field": "resumes[].templatePreviewUrl",
+          "source": "api",
+          "schemaRef": "zod://ResumeListItemSchema"
+        }
+      ],
+      "dataCaptured": [],
+      "interactions": [
+        {
+          "id": "INT-RESMGMT-01-VIEW",
+          "type": "navigation",
+          "description": "Navigate to Resume Detail View when a resume card/row is clicked.",
+          "targetScreenId": "S-RESMGMT-02",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESMGMT-01-DELETE",
+          "type": "api_call",
+          "description": "Delete a resume after user confirms via a confirmation prompt. Permanently removes the resume.",
+          "targetScreenId": null,
+          "endpointOperationId": "deleteResume",
+          "onSuccess": {
+            "behavior": "refetch",
+            "targetScreenId": "S-RESMGMT-01"
+          },
+          "onCancel": {
+            "behavior": "dismiss",
+            "targetScreenId": null
+          }
+        }
+      ],
+      "states": {
+        "loading": "Loading your resumes...",
+        "empty": "You have no saved resumes yet. Generate your first resume to see it here.",
+        "error": "Unable to load your resumes. Please try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "listResumes",
+          "method": "GET",
+          "path": "/api/resumes",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://ResumeListResponseSchema",
+          "errorSchemaRef": "zod://ResumeManagementErrorSchema"
+        },
+        {
+          "operationId": "deleteResume",
+          "method": "DELETE",
+          "path": "/api/resumes/{resumeId}",
+          "requestSchemaRef": "zod://ResumeDeleteRequestSchema",
+          "responseSchemaRef": "zod://ResumeDeleteResponseSchema",
+          "errorSchemaRef": "zod://ResumeManagementErrorSchema"
+        }
+      ]
+    },
+    {
+      "screenId": "S-RESMGMT-02",
+      "name": "Resume Detail View",
+      "type": "api_driven",
+      "navigation": {
+        "route": "/resumes/:resumeId",
+        "parentScreenId": "S-RESMGMT-01"
+      },
+      "dataDisplayed": [
+        {
+          "field": "resume",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailResponseSchema"
+        },
+        {
+          "field": "resume.id",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        },
+        {
+          "field": "resume.jobTitle",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        },
+        {
+          "field": "resume.companyName",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        },
+        {
+          "field": "resume.createdAt",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        },
+        {
+          "field": "resume.updatedAt",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        },
+        {
+          "field": "resume.templateId",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        },
+        {
+          "field": "resume.templateName",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        },
+        {
+          "field": "resume.previewHtml",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        },
+        {
+          "field": "resume.resumeData",
+          "source": "api",
+          "schemaRef": "zod://ResumeDetailSchema"
+        }
+      ],
+      "dataCaptured": [],
+      "interactions": [
+        {
+          "id": "INT-RESMGMT-02-DOWNLOAD",
+          "type": "api_call",
+          "description": "Download the resume as a PDF file. Triggers a file download in the browser.",
+          "targetScreenId": null,
+          "endpointOperationId": "downloadResumePdf",
+          "onSuccess": {
+            "behavior": "file_download",
+            "targetScreenId": null
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESMGMT-02-EDIT",
+          "type": "navigation",
+          "description": "Open the saved resume in the editor for further modifications. Navigates to the Resume Editor screen.",
+          "targetScreenId": "S-EDITOR-01",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-RESMGMT-02-BACK",
+          "type": "navigation",
+          "description": "Navigate back to My Resumes Dashboard.",
+          "targetScreenId": "S-RESMGMT-01",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Loading resume preview...",
+        "empty": null,
+        "error": "Unable to load this resume. It may have been deleted or is unavailable."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "getResumeDetail",
+          "method": "GET",
+          "path": "/api/resumes/{resumeId}",
+          "requestSchemaRef": "zod://ResumeDetailRequestSchema",
+          "responseSchemaRef": "zod://ResumeDetailResponseSchema",
+          "errorSchemaRef": "zod://ResumeManagementErrorSchema"
+        },
+        {
+          "operationId": "downloadResumePdf",
+          "method": "GET",
+          "path": "/api/resumes/{resumeId}/download",
+          "requestSchemaRef": "zod://ResumeDownloadRequestSchema",
+          "responseSchemaRef": "zod://ResumeDownloadResponseSchema",
+          "errorSchemaRef": "zod://ResumeManagementErrorSchema"
+        }
+      ]
+    }
+  ],
+
+  "assumptions": [
+    {
+      "id": "A-RESMGMT-001",
+      "text": "The My Resumes Dashboard is accessible from the authenticated sidebar and is part of the main application shell with sidebar, header, and breadcrumbs.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-RESMGMT-002",
+      "text": "The Resume Detail View is a deep-linked screen accessible via /resumes/:resumeId. It does not appear as a separate sidebar entry but inherits the 'My Resumes' breadcrumb trail.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-RESMGMT-003",
+      "text": "The 'Edit' action on Resume Detail View navigates to the Resume Editor screen (S-EDITOR-01) in the M-EDITOR module, passing the resumeId as a route parameter or query parameter to load the existing resume data.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-RESMGMT-004",
+      "text": "The PDF download endpoint returns a binary PDF blob (application/pdf content type) that triggers a browser file download rather than returning a JSON response.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-RESMGMT-005",
+      "text": "Resume deletion is permanent and cannot be undone (per BR-RESMGMT-02). The confirmation prompt clearly communicates this to the user before proceeding.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-RESMGMT-006",
+      "text": "The resume list on the dashboard is ordered by most recent first (descending by createdAt). Pagination or infinite scroll may be needed for users with many resumes, but is not specified for MVP.",
+      "severity": "low",
+      "state": "open"
+    },
+    {
+      "id": "A-RESMGMT-007",
+      "text": "There is no limit on the number of resumes a user can save (per BR-RESMGMT-01). The dashboard should handle large lists gracefully.",
+      "severity": "low",
+      "state": "open"
+    },
+    {
+      "id": "A-RESMGMT-008",
+      "text": "The Resume Detail View renders a full preview of the resume using pre-rendered HTML (previewHtml field) within the original template styling, not a raw data display.",
+      "severity": "medium",
+      "state": "open"
+    }
+  ]
+}

@@ -1,0 +1,456 @@
+{
+  "moduleId": "M-AUTH",
+  "contractVersion": "v1.2.0",
+  "status": "draft",
+
+  "navigationMap": {
+    "rootScreenId": "S-AUTH-02",
+    "flowType": "standalone",
+    "sidebarGroup": null
+  },
+
+  "layout": {
+    "template": "page",
+    "containerRoute": null,
+    "sidebar": {
+      "visible": false,
+      "order": null
+    },
+    "breadcrumb": {
+      "label": "Authentication",
+      "show": false
+    },
+    "screensPositioning": {
+      "arrangement": "full-page",
+      "regions": [
+        {
+          "regionId": "auth-center",
+          "zone": "main",
+          "basis": "100%",
+          "minWidth": null,
+          "scrollable": true,
+          "screens": [
+            {
+              "screenId": "S-AUTH-01",
+              "visibility": "conditional",
+              "condition": "route === '/auth/signup'",
+              "order": 1
+            },
+            {
+              "screenId": "S-AUTH-02",
+              "visibility": "conditional",
+              "condition": "route === '/auth/login'",
+              "order": 2
+            },
+            {
+              "screenId": "S-AUTH-03",
+              "visibility": "conditional",
+              "condition": "route === '/auth/forgot-password' || route === '/auth/reset-password'",
+              "order": 3
+            }
+          ]
+        }
+      ]
+    },
+    "standardControls": [
+      {
+        "id": "ctrl-nav-login",
+        "type": "cancel_link",
+        "label": "Already have an account? Log in",
+        "position": "sticky_bottom",
+        "visualPriority": "tertiary"
+      },
+      {
+        "id": "ctrl-nav-signup",
+        "type": "cancel_link",
+        "label": "Don't have an account? Sign up",
+        "position": "sticky_bottom",
+        "visualPriority": "tertiary"
+      },
+      {
+        "id": "ctrl-back-to-login",
+        "type": "cancel_link",
+        "label": "Back to Login",
+        "position": "top_left",
+        "visualPriority": "secondary"
+      }
+    ]
+  },
+
+  "screens": [
+    {
+      "screenId": "S-AUTH-01",
+      "name": "Sign Up",
+      "type": "input_driven",
+      "navigation": {
+        "route": "/auth/signup",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [],
+      "dataCaptured": [
+        {
+          "field": "email",
+          "required": true,
+          "schemaRef": "zod://SignUpRequestSchema"
+        },
+        {
+          "field": "password",
+          "required": true,
+          "schemaRef": "zod://SignUpRequestSchema"
+        },
+        {
+          "field": "confirmPassword",
+          "required": true,
+          "schemaRef": "zod://SignUpRequestSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-AUTH-01-SUBMIT",
+          "type": "api_call",
+          "description": "Submit sign-up form to create a new account with email and password.",
+          "targetScreenId": null,
+          "endpointOperationId": "registerUser",
+          "onSuccess": {
+            "behavior": "redirect",
+            "targetScreenId": "S-PROFILE-SETUP"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-AUTH-01-NAV-LOGIN",
+          "type": "navigation",
+          "description": "Navigate to Login page via 'Already have an account?' link.",
+          "targetScreenId": "S-AUTH-02",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Creating your account...",
+        "empty": null,
+        "error": "Unable to create account. Please check your details and try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "registerUser",
+          "method": "POST",
+          "path": "/api/auth/register",
+          "requestSchemaRef": "zod://SignUpRequestSchema",
+          "responseSchemaRef": "zod://AuthResponseSchema",
+          "errorSchemaRef": "zod://AuthErrorSchema"
+        }
+      ]
+    },
+    {
+      "screenId": "S-AUTH-02",
+      "name": "Login",
+      "type": "input_driven",
+      "navigation": {
+        "route": "/auth/login",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [],
+      "dataCaptured": [
+        {
+          "field": "email",
+          "required": true,
+          "schemaRef": "zod://LoginRequestSchema"
+        },
+        {
+          "field": "password",
+          "required": true,
+          "schemaRef": "zod://LoginRequestSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-AUTH-02-SUBMIT",
+          "type": "api_call",
+          "description": "Submit login form to authenticate user with email and password.",
+          "targetScreenId": null,
+          "endpointOperationId": "loginUser",
+          "onSuccess": {
+            "behavior": "redirect",
+            "targetScreenId": "S-PROFILE-DASHBOARD"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-AUTH-02-NAV-SIGNUP",
+          "type": "navigation",
+          "description": "Navigate to Sign Up page via 'Don't have an account?' link.",
+          "targetScreenId": "S-AUTH-01",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-AUTH-02-NAV-FORGOT",
+          "type": "navigation",
+          "description": "Navigate to Forgot Password page via 'Forgot password?' link.",
+          "targetScreenId": "S-AUTH-03",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Signing you in...",
+        "empty": null,
+        "error": "Invalid email or password."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "loginUser",
+          "method": "POST",
+          "path": "/api/auth/login",
+          "requestSchemaRef": "zod://LoginRequestSchema",
+          "responseSchemaRef": "zod://AuthResponseSchema",
+          "errorSchemaRef": "zod://AuthErrorSchema"
+        }
+      ]
+    },
+    {
+      "screenId": "S-AUTH-03",
+      "name": "Forgot Password",
+      "type": "input_driven",
+      "navigation": {
+        "route": "/auth/forgot-password",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [],
+      "dataCaptured": [
+        {
+          "field": "email",
+          "required": true,
+          "schemaRef": "zod://ForgotPasswordRequestSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-AUTH-03-SUBMIT",
+          "type": "api_call",
+          "description": "Submit forgot password form to request a password reset email link.",
+          "targetScreenId": null,
+          "endpointOperationId": "forgotPassword",
+          "onSuccess": {
+            "behavior": "redirect",
+            "targetScreenId": "S-AUTH-03-CONFIRMATION"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-AUTH-03-NAV-LOGIN",
+          "type": "navigation",
+          "description": "Navigate back to Login page via 'Back to Login' link.",
+          "targetScreenId": "S-AUTH-02",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Sending reset link...",
+        "empty": null,
+        "error": "Unable to send reset link. Please try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "forgotPassword",
+          "method": "POST",
+          "path": "/api/auth/forgot-password",
+          "requestSchemaRef": "zod://ForgotPasswordRequestSchema",
+          "responseSchemaRef": "zod://ForgotPasswordResponseSchema",
+          "errorSchemaRef": "zod://AuthErrorSchema"
+        }
+      ]
+    },
+    {
+      "screenId": "S-AUTH-03-CONFIRMATION",
+      "name": "Reset Email Sent Confirmation",
+      "type": "static",
+      "navigation": {
+        "route": "/auth/forgot-password/confirmation",
+        "parentScreenId": "S-AUTH-03"
+      },
+      "dataDisplayed": [
+        {
+          "field": "confirmationMessage",
+          "source": "static",
+          "schemaRef": null
+        }
+      ],
+      "dataCaptured": [],
+      "interactions": [
+        {
+          "id": "INT-AUTH-03C-NAV-LOGIN",
+          "type": "navigation",
+          "description": "Navigate back to Login page after reading confirmation.",
+          "targetScreenId": "S-AUTH-02",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": null,
+        "empty": null,
+        "error": null
+      },
+      "endpointProposals": []
+    },
+    {
+      "screenId": "S-AUTH-03-RESET",
+      "name": "Reset Password",
+      "type": "input_driven",
+      "navigation": {
+        "route": "/auth/reset-password",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [],
+      "dataCaptured": [
+        {
+          "field": "newPassword",
+          "required": true,
+          "schemaRef": "zod://ResetPasswordRequestSchema"
+        },
+        {
+          "field": "confirmNewPassword",
+          "required": true,
+          "schemaRef": "zod://ResetPasswordRequestSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-AUTH-03R-SUBMIT",
+          "type": "api_call",
+          "description": "Submit new password using the reset token from the email link.",
+          "targetScreenId": null,
+          "endpointOperationId": "resetPassword",
+          "onSuccess": {
+            "behavior": "redirect",
+            "targetScreenId": "S-AUTH-02"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-AUTH-03R-NAV-LOGIN",
+          "type": "navigation",
+          "description": "Navigate back to Login page via 'Back to Login' link.",
+          "targetScreenId": "S-AUTH-02",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Resetting your password...",
+        "empty": null,
+        "error": "This link has expired. Please request a new one."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "resetPassword",
+          "method": "POST",
+          "path": "/api/auth/reset-password",
+          "requestSchemaRef": "zod://ResetPasswordRequestSchema",
+          "responseSchemaRef": "zod://ResetPasswordResponseSchema",
+          "errorSchemaRef": "zod://AuthErrorSchema"
+        }
+      ]
+    },
+    {
+      "screenId": "S-AUTH-04",
+      "name": "Logout",
+      "type": "api_driven",
+      "navigation": {
+        "route": null,
+        "parentScreenId": null
+      },
+      "dataDisplayed": [],
+      "dataCaptured": [],
+      "interactions": [
+        {
+          "id": "INT-AUTH-04-LOGOUT",
+          "type": "api_call",
+          "description": "Invoke logout to invalidate session token, clear local session data, and redirect to login.",
+          "targetScreenId": null,
+          "endpointOperationId": "logoutUser",
+          "onSuccess": {
+            "behavior": "redirect",
+            "targetScreenId": "S-AUTH-02"
+          },
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Logging out...",
+        "empty": null,
+        "error": "Unable to log out. Please try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "logoutUser",
+          "method": "POST",
+          "path": "/api/auth/logout",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://LogoutResponseSchema",
+          "errorSchemaRef": "zod://AuthErrorSchema"
+        }
+      ]
+    }
+  ],
+
+  "assumptions": [
+    {
+      "id": "A-AUTH-001",
+      "text": "Auth screens use a standalone centered form layout with no sidebar, header, or footer from the authenticated shell.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-AUTH-002",
+      "text": "After successful sign-up, the user is redirected to a profile setup screen (S-PROFILE-SETUP) defined in the M-PROFILE module.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-AUTH-003",
+      "text": "After successful login, the user is redirected to the profile dashboard (S-PROFILE-DASHBOARD) defined in the M-PROFILE module.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-AUTH-004",
+      "text": "Logout is a global navigation action (e.g., dropdown menu item) available on all authenticated pages, not a standalone screen with its own route.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-AUTH-005",
+      "text": "The reset password page receives a token as a URL query parameter (e.g., /auth/reset-password?token=xxx) which is extracted client-side and sent with the reset request.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-AUTH-006",
+      "text": "Session tokens (JWT or similar) are stored in httpOnly cookies or secure local storage and automatically attached to subsequent API requests.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-AUTH-007",
+      "text": "The Sign Up form includes a confirmPassword field for password confirmation, even though it is not explicitly mentioned in the requirements.",
+      "severity": "low",
+      "state": "open"
+    },
+    {
+      "id": "A-AUTH-008",
+      "text": "The forgot-password endpoint always returns a success response regardless of whether the email exists, to prevent email enumeration attacks.",
+      "severity": "medium",
+      "state": "open"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "moduleId": "M-EDITOR",
+  "contractVersion": "v1.2.0",
+  "schemas": [
+    {
+      "schemaId": "ResumeSectionItemSchema",
+      "purpose": "shared",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ itemId: z.string().uuid(), content: z.string().min(1, 'Item content cannot be empty'), subContent: z.string().optional(), metadata: z.record(z.string(), z.string()).optional() })",
+      "usedBy": ["S-EDIT-01", "ResumeEditRequestSchema"]
+    },
+    {
+      "schemaId": "ResumeSectionSchema",
+      "purpose": "shared",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ sectionId: z.string().uuid(), title: z.string().min(1, 'Section title is required'), type: z.enum(['experience', 'education', 'skills', 'certifications', 'projects', 'awards', 'languages', 'custom']), order: z.number().int().nonnegative(), visible: z.boolean().default(true), items: z.array(ResumeSectionItemSchema).min(0) })",
+      "usedBy": ["S-EDIT-01", "ResumeEditRequestSchema"]
+    },
+    {
+      "schemaId": "PersonalInfoSchema",
+      "purpose": "shared",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ fullName: z.string().min(1, 'Full name is required'), email: z.string().email('Please enter a valid email address'), phone: z.string().optional(), location: z.string().optional(), linkedIn: z.string().url('Please enter a valid URL').optional().or(z.literal('')), website: z.string().url('Please enter a valid URL').optional().or(z.literal('')) })",
+      "usedBy": ["S-EDIT-01", "ResumeEditRequestSchema"]
+    },
+    {
+      "schemaId": "ResumeEditRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ personalInfo: PersonalInfoSchema, summary: z.string().optional(), sections: z.array(ResumeSectionSchema).min(1, 'Resume must have at least one section'), templateId: z.string().uuid('Invalid template ID') })",
+      "usedBy": ["saveResumeEdits", "S-EDIT-01"]
+    },
+    {
+      "schemaId": "ResumeContentResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ resumeId: z.string().uuid(), personalInfo: PersonalInfoSchema, summary: z.string().optional(), sections: z.array(ResumeSectionSchema), templateId: z.string().uuid(), createdAt: z.string().datetime(), updatedAt: z.string().datetime() })",
+      "usedBy": ["getResumeContent", "S-EDIT-01"]
+    },
+    {
+      "schemaId": "ResumeEditResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ resumeId: z.string().uuid(), message: z.string(), updatedAt: z.string().datetime() })",
+      "usedBy": ["saveResumeEdits"]
+    },
+    {
+      "schemaId": "ResumePreviewResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ resumeId: z.string().uuid(), templateId: z.string().uuid(), renderedHtml: z.string().optional(), renderedData: z.record(z.string(), z.any()).optional() })",
+      "usedBy": ["S-EDIT-02"]
+    },
+    {
+      "schemaId": "TemplateSchema",
+      "purpose": "shared",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ templateId: z.string().uuid(), name: z.string(), description: z.string().optional(), thumbnailUrl: z.string().url() })",
+      "usedBy": ["getTemplateList", "S-EDIT-02"]
+    },
+    {
+      "schemaId": "TemplateListResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ templates: z.array(TemplateSchema) })",
+      "usedBy": ["getTemplateList", "S-EDIT-02"]
+    },
+    {
+      "schemaId": "TemplateSwitchSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ templateId: z.string().uuid('Please select a valid template') })",
+      "usedBy": ["S-EDIT-02", "INT-EDIT-02-SWITCH-TEMPLATE"]
+    },
+    {
+      "schemaId": "EditorErrorSchema",
+      "purpose": "error",
+      "targetFile": "src/schemas/editor.schema.ts",
+      "definition": "z.object({ statusCode: z.number().int(), error: z.string(), message: z.string(), field: z.string().optional() })",
+      "usedBy": ["getResumeContent", "saveResumeEdits", "getTemplateList"]
+    }
+  ]
+}

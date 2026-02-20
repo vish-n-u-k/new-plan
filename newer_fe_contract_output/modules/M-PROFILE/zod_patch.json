@@ -1,0 +1,139 @@
+{
+  "moduleId": "M-PROFILE",
+  "contractVersion": "v1.0.0",
+  "schemas": [
+    {
+      "schemaId": "ContactInfoRequest",
+      "purpose": "request",
+      "targetFile": "src/schemas/profile-contact.schema.ts",
+      "definition": "z.object({ fullName: z.string().min(1, 'Full name is required').max(200), phoneNumber: z.string().max(30).optional().nullable(), email: z.string().email('Invalid email format').optional().nullable(), locationCity: z.string().max(100).optional().nullable(), locationState: z.string().max(100).optional().nullable(), locationCountry: z.string().max(100).optional().nullable(), linkedinUrl: z.string().url().regex(/^https:\\/\\/(www\\.)?linkedin\\.com\\//, 'Must be a valid LinkedIn URL').optional().nullable() })",
+      "usedBy": ["upsertContactInfo", "S-PROF-06"]
+    },
+    {
+      "schemaId": "ContactInfoResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-contact.schema.ts",
+      "definition": "z.object({ id: z.string().uuid(), fullName: z.string(), phoneNumber: z.string().nullable(), email: z.string().nullable(), locationCity: z.string().nullable(), locationState: z.string().nullable(), locationCountry: z.string().nullable(), linkedinUrl: z.string().nullable(), updatedAt: z.string().datetime() })",
+      "usedBy": ["getContactInfo", "upsertContactInfo", "S-PROF-01", "S-PROF-06"]
+    },
+    {
+      "schemaId": "SkillRequest",
+      "purpose": "request",
+      "targetFile": "src/schemas/profile-skills.schema.ts",
+      "definition": "z.object({ name: z.string().min(1, 'Skill name is required').max(100), proficiencyLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional().nullable() })",
+      "usedBy": ["createSkill", "updateSkill", "S-PROF-02"]
+    },
+    {
+      "schemaId": "SkillResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-skills.schema.ts",
+      "definition": "z.object({ id: z.string().uuid(), name: z.string(), proficiencyLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).nullable(), createdAt: z.string().datetime(), updatedAt: z.string().datetime() })",
+      "usedBy": ["createSkill", "updateSkill"]
+    },
+    {
+      "schemaId": "SkillListResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-skills.schema.ts",
+      "definition": "z.object({ items: z.array(z.object({ id: z.string().uuid(), name: z.string(), proficiencyLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).nullable(), createdAt: z.string().datetime(), updatedAt: z.string().datetime() })), total: z.number().int().nonnegative() })",
+      "usedBy": ["listSkills", "S-PROF-01", "S-PROF-02"]
+    },
+    {
+      "schemaId": "ExperienceRequest",
+      "purpose": "request",
+      "targetFile": "src/schemas/profile-experience.schema.ts",
+      "definition": "z.object({ jobTitle: z.string().min(1, 'Job title is required').max(200), company: z.string().min(1, 'Company name is required').max(200), startDate: z.string().regex(/^\\d{4}-\\d{2}$/, 'Must be YYYY-MM format'), endDate: z.string().regex(/^\\d{4}-\\d{2}$/, 'Must be YYYY-MM format').optional().nullable(), isCurrent: z.boolean().optional().default(false), bulletPoints: z.array(z.string().min(1).max(1000)).optional().default([]) })",
+      "usedBy": ["createExperience", "updateExperience", "S-PROF-03"]
+    },
+    {
+      "schemaId": "ExperienceResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-experience.schema.ts",
+      "definition": "z.object({ id: z.string().uuid(), jobTitle: z.string(), company: z.string(), startDate: z.string(), endDate: z.string().nullable(), isCurrent: z.boolean(), bulletPoints: z.array(z.string()), createdAt: z.string().datetime(), updatedAt: z.string().datetime() })",
+      "usedBy": ["createExperience", "updateExperience"]
+    },
+    {
+      "schemaId": "ExperienceListResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-experience.schema.ts",
+      "definition": "z.object({ items: z.array(z.object({ id: z.string().uuid(), jobTitle: z.string(), company: z.string(), startDate: z.string(), endDate: z.string().nullable(), isCurrent: z.boolean(), bulletPoints: z.array(z.string()), createdAt: z.string().datetime(), updatedAt: z.string().datetime() })), total: z.number().int().nonnegative() })",
+      "usedBy": ["listExperience", "S-PROF-01", "S-PROF-03"]
+    },
+    {
+      "schemaId": "EducationRequest",
+      "purpose": "request",
+      "targetFile": "src/schemas/profile-education.schema.ts",
+      "definition": "z.object({ degree: z.string().min(1, 'Degree is required').max(200), institution: z.string().min(1, 'Institution is required').max(200), startDate: z.string().regex(/^\\d{4}-\\d{2}$/, 'Must be YYYY-MM format').optional().nullable(), endDate: z.string().regex(/^\\d{4}-\\d{2}$/, 'Must be YYYY-MM format').optional().nullable(), gpa: z.string().max(10).optional().nullable(), honors: z.string().max(200).optional().nullable(), relevantCoursework: z.string().max(1000).optional().nullable() })",
+      "usedBy": ["createEducation", "updateEducation", "S-PROF-04"]
+    },
+    {
+      "schemaId": "EducationResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-education.schema.ts",
+      "definition": "z.object({ id: z.string().uuid(), degree: z.string(), institution: z.string(), startDate: z.string().nullable(), endDate: z.string().nullable(), gpa: z.string().nullable(), honors: z.string().nullable(), relevantCoursework: z.string().nullable(), createdAt: z.string().datetime(), updatedAt: z.string().datetime() })",
+      "usedBy": ["createEducation", "updateEducation"]
+    },
+    {
+      "schemaId": "EducationListResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-education.schema.ts",
+      "definition": "z.object({ items: z.array(z.object({ id: z.string().uuid(), degree: z.string(), institution: z.string(), startDate: z.string().nullable(), endDate: z.string().nullable(), gpa: z.string().nullable(), honors: z.string().nullable(), relevantCoursework: z.string().nullable(), createdAt: z.string().datetime(), updatedAt: z.string().datetime() })), total: z.number().int().nonnegative() })",
+      "usedBy": ["listEducation", "S-PROF-01", "S-PROF-04"]
+    },
+    {
+      "schemaId": "ResumeUploadRequest",
+      "purpose": "request",
+      "targetFile": "src/schemas/profile-resume.schema.ts",
+      "definition": "z.object({ fileName: z.string().min(1), fileSize: z.number().int().positive().max(5242880, 'File must not exceed 5 MB'), mimeType: z.enum(['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/rtf', 'text/rtf']) })",
+      "usedBy": ["uploadResume", "S-PROF-05"]
+    },
+    {
+      "schemaId": "ResumeParseResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-resume.schema.ts",
+      "definition": "z.object({ parseId: z.string().uuid(), status: z.enum(['success', 'partial', 'failed']), parsedData: z.object({ contactInfo: z.object({ fullName: z.string().nullable(), phoneNumber: z.string().nullable(), email: z.string().nullable(), locationCity: z.string().nullable(), locationState: z.string().nullable(), locationCountry: z.string().nullable(), linkedinUrl: z.string().nullable() }).nullable(), skills: z.array(z.object({ name: z.string(), proficiencyLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).nullable() })).nullable(), experience: z.array(z.object({ jobTitle: z.string(), company: z.string(), startDate: z.string().nullable(), endDate: z.string().nullable(), isCurrent: z.boolean(), bulletPoints: z.array(z.string()) })).nullable(), education: z.array(z.object({ degree: z.string(), institution: z.string(), startDate: z.string().nullable(), endDate: z.string().nullable(), gpa: z.string().nullable(), honors: z.string().nullable(), relevantCoursework: z.string().nullable() })).nullable() }), warnings: z.array(z.string()).optional() })",
+      "usedBy": ["uploadResume", "S-PROF-05"]
+    },
+    {
+      "schemaId": "ResumeConfirmRequest",
+      "purpose": "request",
+      "targetFile": "src/schemas/profile-resume.schema.ts",
+      "definition": "z.object({ parseId: z.string().uuid(), mergeStrategy: z.enum(['merge', 'replace']), contactInfo: z.object({ fullName: z.string().min(1).max(200), phoneNumber: z.string().max(30).nullable(), email: z.string().email().nullable(), locationCity: z.string().max(100).nullable(), locationState: z.string().max(100).nullable(), locationCountry: z.string().max(100).nullable(), linkedinUrl: z.string().url().nullable() }).optional().nullable(), skills: z.array(z.object({ name: z.string().min(1).max(100), proficiencyLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).nullable() })).optional().nullable(), experience: z.array(z.object({ jobTitle: z.string().min(1).max(200), company: z.string().min(1).max(200), startDate: z.string(), endDate: z.string().nullable(), isCurrent: z.boolean(), bulletPoints: z.array(z.string()) })).optional().nullable(), education: z.array(z.object({ degree: z.string().min(1).max(200), institution: z.string().min(1).max(200), startDate: z.string().nullable(), endDate: z.string().nullable(), gpa: z.string().nullable(), honors: z.string().nullable(), relevantCoursework: z.string().nullable() })).optional().nullable() })",
+      "usedBy": ["confirmResumeParse", "S-PROF-05"]
+    },
+    {
+      "schemaId": "ResumeConfirmResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-resume.schema.ts",
+      "definition": "z.object({ success: z.boolean(), sectionsUpdated: z.array(z.enum(['contactInfo', 'skills', 'experience', 'education'])), message: z.string() })",
+      "usedBy": ["confirmResumeParse", "S-PROF-05"]
+    },
+    {
+      "schemaId": "ProfileSummaryResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-summary.schema.ts",
+      "definition": "z.object({ contactInfo: z.object({ fullName: z.string().nullable(), email: z.string().nullable(), hasComplete: z.boolean() }).nullable(), skillsCount: z.number().int().nonnegative(), experienceCount: z.number().int().nonnegative(), educationCount: z.number().int().nonnegative(), completenessPercentage: z.number().min(0).max(100).optional() })",
+      "usedBy": ["getProfileSummary", "S-PROF-01"]
+    },
+    {
+      "schemaId": "ProfileCompletenessResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/profile-summary.schema.ts",
+      "definition": "z.object({ overallPercentage: z.number().min(0).max(100), sections: z.object({ contactInfo: z.number().min(0).max(100), skills: z.number().min(0).max(100), experience: z.number().min(0).max(100), education: z.number().min(0).max(100) }) })",
+      "usedBy": ["S-PROF-01"]
+    },
+    {
+      "schemaId": "DeleteResponse",
+      "purpose": "response",
+      "targetFile": "src/schemas/common.schema.ts",
+      "definition": "z.object({ success: z.boolean(), deletedId: z.string().uuid() })",
+      "usedBy": ["deleteSkill", "deleteExperience", "deleteEducation"]
+    },
+    {
+      "schemaId": "ApiError",
+      "purpose": "error",
+      "targetFile": "src/schemas/common.schema.ts",
+      "definition": "z.object({ statusCode: z.number().int(), message: z.string(), error: z.string().optional(), details: z.array(z.object({ field: z.string().optional(), message: z.string() })).optional() })",
+      "usedBy": ["getProfileSummary", "getContactInfo", "upsertContactInfo", "listSkills", "createSkill", "updateSkill", "deleteSkill", "listExperience", "createExperience", "updateExperience", "deleteExperience", "listEducation", "createEducation", "updateEducation", "deleteEducation", "uploadResume", "confirmResumeParse"]
+    }
+  ]
+}

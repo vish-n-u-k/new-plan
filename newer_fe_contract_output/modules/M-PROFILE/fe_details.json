@@ -1,0 +1,430 @@
+{
+  "moduleId": "M-PROFILE",
+  "contractVersion": "v1.0.0",
+  "status": "draft",
+  "changeType": "none",
+
+  "navigationMap": {
+    "rootScreenId": "S-PROF-01",
+    "flowType": "hub-and-spoke",
+    "sidebarGroup": {
+      "id": "nav-profile",
+      "label": "Profile",
+      "icon": "user-circle"
+    }
+  },
+
+  "layout": {
+    "template": "page",
+    "containerRoute": null,
+    "sidebar": {
+      "visible": true,
+      "order": 2
+    },
+    "breadcrumb": {
+      "label": "Profile",
+      "show": true
+    },
+    "screensPositioning": {
+      "arrangement": "full-page",
+      "regions": [
+        {
+          "regionId": "main-content",
+          "zone": "main",
+          "basis": "100%",
+          "minWidth": null,
+          "scrollable": true,
+          "screens": [
+            {
+              "screenId": "S-PROF-01",
+              "visibility": "always",
+              "condition": null,
+              "order": 1
+            }
+          ]
+        }
+      ]
+    },
+    "standardControls": [
+      {
+        "id": "ctrl-back-to-dashboard",
+        "type": "back_button",
+        "label": "Back to Dashboard",
+        "position": "top_left",
+        "visualPriority": "secondary"
+      },
+      {
+        "id": "ctrl-cancel",
+        "type": "cancel_link",
+        "label": "Cancel",
+        "position": "sticky_bottom",
+        "visualPriority": "tertiary"
+      }
+    ]
+  },
+
+  "screens": [
+    {
+      "screenId": "S-PROF-01",
+      "name": "Profile Dashboard",
+      "route": "/profile",
+      "type": "api_driven",
+      "authRequired": true,
+      "allowedRoles": ["user"],
+      "dataDisplayed": [
+        { "field": "contactInfoSummary", "source": "api", "schemaRef": "zod://ContactInfoResponse" },
+        { "field": "skillsList", "source": "api", "schemaRef": "zod://SkillListResponse" },
+        { "field": "experienceList", "source": "api", "schemaRef": "zod://ExperienceListResponse" },
+        { "field": "educationList", "source": "api", "schemaRef": "zod://EducationListResponse" },
+        { "field": "profileCompleteness", "source": "api", "schemaRef": "zod://ProfileCompletenessResponse" }
+      ],
+      "dataCaptured": [],
+      "interactions": [
+        "Navigate to Contact Information screen",
+        "Navigate to Skills Manager screen",
+        "Navigate to Experience Manager screen",
+        "Navigate to Education Manager screen",
+        "Navigate to Resume Upload screen"
+      ],
+      "states": {
+        "loading": "Skeleton cards shown for each profile section while data loads.",
+        "empty": "All sections show empty-state cards with prompts to add data or upload a resume.",
+        "error": "Error banner displayed with retry button if profile data fails to load."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "getProfileSummary",
+          "method": "GET",
+          "path": "/api/profile/summary",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://ProfileSummaryResponse",
+          "errorSchemaRef": "zod://ApiError"
+        }
+      ]
+    },
+    {
+      "screenId": "S-PROF-06",
+      "name": "Contact Information",
+      "route": "/profile/contact",
+      "type": "input_driven",
+      "authRequired": true,
+      "allowedRoles": ["user"],
+      "dataDisplayed": [
+        { "field": "contactInfo", "source": "api", "schemaRef": "zod://ContactInfoResponse" }
+      ],
+      "dataCaptured": [
+        { "field": "fullName", "required": true, "schemaRef": "zod://ContactInfoRequest" },
+        { "field": "phoneNumber", "required": false, "schemaRef": "zod://ContactInfoRequest" },
+        { "field": "email", "required": false, "schemaRef": "zod://ContactInfoRequest" },
+        { "field": "locationCity", "required": false, "schemaRef": "zod://ContactInfoRequest" },
+        { "field": "locationState", "required": false, "schemaRef": "zod://ContactInfoRequest" },
+        { "field": "locationCountry", "required": false, "schemaRef": "zod://ContactInfoRequest" },
+        { "field": "linkedinUrl", "required": false, "schemaRef": "zod://ContactInfoRequest" }
+      ],
+      "interactions": [
+        "On Save: PUT /api/profile/contact -> onSuccess: navigate to Profile Dashboard",
+        "On Cancel: navigate back to Profile Dashboard"
+      ],
+      "states": {
+        "loading": "Form skeleton shown while existing contact info loads.",
+        "empty": "Empty form with all fields blank, ready for input.",
+        "error": "Inline validation errors for invalid email or LinkedIn URL format. Banner error if save fails."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "getContactInfo",
+          "method": "GET",
+          "path": "/api/profile/contact",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://ContactInfoResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "upsertContactInfo",
+          "method": "PUT",
+          "path": "/api/profile/contact",
+          "requestSchemaRef": "zod://ContactInfoRequest",
+          "responseSchemaRef": "zod://ContactInfoResponse",
+          "errorSchemaRef": "zod://ApiError"
+        }
+      ]
+    },
+    {
+      "screenId": "S-PROF-02",
+      "name": "Skills Manager",
+      "route": "/profile/skills",
+      "type": "api_driven",
+      "authRequired": true,
+      "allowedRoles": ["user"],
+      "dataDisplayed": [
+        { "field": "skillsList", "source": "api", "schemaRef": "zod://SkillListResponse" }
+      ],
+      "dataCaptured": [
+        { "field": "skillName", "required": true, "schemaRef": "zod://SkillRequest" },
+        { "field": "proficiencyLevel", "required": false, "schemaRef": "zod://SkillRequest" }
+      ],
+      "interactions": [
+        "On Add Skill: POST /api/profile/skills -> onSuccess: refresh skills list",
+        "On Edit Skill: PUT /api/profile/skills/:id -> onSuccess: refresh skills list",
+        "On Delete Skill: DELETE /api/profile/skills/:id (with confirmation prompt) -> onSuccess: refresh skills list",
+        "On Cancel / Back: navigate to Profile Dashboard"
+      ],
+      "states": {
+        "loading": "Skeleton list shown while skills load.",
+        "empty": "Empty state with message 'No skills added yet' and prominent Add Skill button.",
+        "error": "Error banner with retry button if skills fail to load."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "listSkills",
+          "method": "GET",
+          "path": "/api/profile/skills",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://SkillListResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "createSkill",
+          "method": "POST",
+          "path": "/api/profile/skills",
+          "requestSchemaRef": "zod://SkillRequest",
+          "responseSchemaRef": "zod://SkillResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "updateSkill",
+          "method": "PUT",
+          "path": "/api/profile/skills/:id",
+          "requestSchemaRef": "zod://SkillRequest",
+          "responseSchemaRef": "zod://SkillResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "deleteSkill",
+          "method": "DELETE",
+          "path": "/api/profile/skills/:id",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://DeleteResponse",
+          "errorSchemaRef": "zod://ApiError"
+        }
+      ]
+    },
+    {
+      "screenId": "S-PROF-03",
+      "name": "Experience Manager",
+      "route": "/profile/experience",
+      "type": "api_driven",
+      "authRequired": true,
+      "allowedRoles": ["user"],
+      "dataDisplayed": [
+        { "field": "experienceList", "source": "api", "schemaRef": "zod://ExperienceListResponse" }
+      ],
+      "dataCaptured": [
+        { "field": "jobTitle", "required": true, "schemaRef": "zod://ExperienceRequest" },
+        { "field": "company", "required": true, "schemaRef": "zod://ExperienceRequest" },
+        { "field": "startDate", "required": true, "schemaRef": "zod://ExperienceRequest" },
+        { "field": "endDate", "required": false, "schemaRef": "zod://ExperienceRequest" },
+        { "field": "isCurrent", "required": false, "schemaRef": "zod://ExperienceRequest" },
+        { "field": "bulletPoints", "required": false, "schemaRef": "zod://ExperienceRequest" }
+      ],
+      "interactions": [
+        "On Add Experience: POST /api/profile/experience -> onSuccess: refresh experience list",
+        "On Edit Experience: PUT /api/profile/experience/:id -> onSuccess: refresh experience list",
+        "On Delete Experience: DELETE /api/profile/experience/:id (with confirmation prompt) -> onSuccess: refresh experience list",
+        "On Reorder Bullet Points: PATCH /api/profile/experience/:id/bullets -> onSuccess: refresh entry",
+        "On Cancel / Back: navigate to Profile Dashboard"
+      ],
+      "states": {
+        "loading": "Skeleton cards shown while experience entries load.",
+        "empty": "Empty state with message 'No work experience added yet' and Add Experience button.",
+        "error": "Error banner with retry button if experience data fails to load."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "listExperience",
+          "method": "GET",
+          "path": "/api/profile/experience",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://ExperienceListResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "createExperience",
+          "method": "POST",
+          "path": "/api/profile/experience",
+          "requestSchemaRef": "zod://ExperienceRequest",
+          "responseSchemaRef": "zod://ExperienceResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "updateExperience",
+          "method": "PUT",
+          "path": "/api/profile/experience/:id",
+          "requestSchemaRef": "zod://ExperienceRequest",
+          "responseSchemaRef": "zod://ExperienceResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "deleteExperience",
+          "method": "DELETE",
+          "path": "/api/profile/experience/:id",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://DeleteResponse",
+          "errorSchemaRef": "zod://ApiError"
+        }
+      ]
+    },
+    {
+      "screenId": "S-PROF-04",
+      "name": "Education Manager",
+      "route": "/profile/education",
+      "type": "api_driven",
+      "authRequired": true,
+      "allowedRoles": ["user"],
+      "dataDisplayed": [
+        { "field": "educationList", "source": "api", "schemaRef": "zod://EducationListResponse" }
+      ],
+      "dataCaptured": [
+        { "field": "degree", "required": true, "schemaRef": "zod://EducationRequest" },
+        { "field": "institution", "required": true, "schemaRef": "zod://EducationRequest" },
+        { "field": "startDate", "required": false, "schemaRef": "zod://EducationRequest" },
+        { "field": "endDate", "required": false, "schemaRef": "zod://EducationRequest" },
+        { "field": "gpa", "required": false, "schemaRef": "zod://EducationRequest" },
+        { "field": "honors", "required": false, "schemaRef": "zod://EducationRequest" },
+        { "field": "relevantCoursework", "required": false, "schemaRef": "zod://EducationRequest" }
+      ],
+      "interactions": [
+        "On Add Education: POST /api/profile/education -> onSuccess: refresh education list",
+        "On Edit Education: PUT /api/profile/education/:id -> onSuccess: refresh education list",
+        "On Delete Education: DELETE /api/profile/education/:id (with confirmation prompt) -> onSuccess: refresh education list",
+        "On Cancel / Back: navigate to Profile Dashboard"
+      ],
+      "states": {
+        "loading": "Skeleton cards shown while education entries load.",
+        "empty": "Empty state with message 'No education entries added yet' and Add Education button.",
+        "error": "Error banner with retry button if education data fails to load."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "listEducation",
+          "method": "GET",
+          "path": "/api/profile/education",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://EducationListResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "createEducation",
+          "method": "POST",
+          "path": "/api/profile/education",
+          "requestSchemaRef": "zod://EducationRequest",
+          "responseSchemaRef": "zod://EducationResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "updateEducation",
+          "method": "PUT",
+          "path": "/api/profile/education/:id",
+          "requestSchemaRef": "zod://EducationRequest",
+          "responseSchemaRef": "zod://EducationResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "deleteEducation",
+          "method": "DELETE",
+          "path": "/api/profile/education/:id",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://DeleteResponse",
+          "errorSchemaRef": "zod://ApiError"
+        }
+      ]
+    },
+    {
+      "screenId": "S-PROF-05",
+      "name": "Resume Upload & Parser",
+      "route": "/profile/resume-upload",
+      "type": "input_driven",
+      "authRequired": true,
+      "allowedRoles": ["user"],
+      "dataDisplayed": [
+        { "field": "parsedResumeData", "source": "api", "schemaRef": "zod://ResumeParseResponse" }
+      ],
+      "dataCaptured": [
+        { "field": "resumeFile", "required": true, "schemaRef": "zod://ResumeUploadRequest" },
+        { "field": "mergeStrategy", "required": false, "schemaRef": "zod://ResumeConfirmRequest" },
+        { "field": "reviewedContactInfo", "required": false, "schemaRef": "zod://ResumeConfirmRequest" },
+        { "field": "reviewedSkills", "required": false, "schemaRef": "zod://ResumeConfirmRequest" },
+        { "field": "reviewedExperience", "required": false, "schemaRef": "zod://ResumeConfirmRequest" },
+        { "field": "reviewedEducation", "required": false, "schemaRef": "zod://ResumeConfirmRequest" }
+      ],
+      "interactions": [
+        "Step 1 - Upload: POST /api/profile/resume/upload -> onSuccess: show parsed data review (step 2)",
+        "Step 2 - Review & Confirm: POST /api/profile/resume/confirm -> onSuccess: navigate to Profile Dashboard with success toast",
+        "On Cancel (any step): navigate back to Profile Dashboard",
+        "On Parse Failure: show error message with links to manual entry screens"
+      ],
+      "states": {
+        "loading": "Upload progress bar shown during file upload. Spinner with 'Parsing your resume...' during extraction.",
+        "empty": "File drop zone with accepted formats listed (PDF, DOCX, TXT, RTF) and 5 MB limit note.",
+        "error": "Error message for unsupported format, oversized file, or parse failure. Includes links to manual profile sections."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "uploadResume",
+          "method": "POST",
+          "path": "/api/profile/resume/upload",
+          "requestSchemaRef": "zod://ResumeUploadRequest",
+          "responseSchemaRef": "zod://ResumeParseResponse",
+          "errorSchemaRef": "zod://ApiError"
+        },
+        {
+          "operationId": "confirmResumeParse",
+          "method": "POST",
+          "path": "/api/profile/resume/confirm",
+          "requestSchemaRef": "zod://ResumeConfirmRequest",
+          "responseSchemaRef": "zod://ResumeConfirmResponse",
+          "errorSchemaRef": "zod://ApiError"
+        }
+      ]
+    }
+  ],
+
+  "assumptions": [
+    {
+      "id": "A-PROF-01",
+      "text": "All profile screens require authentication. No public profile view exists in MVP.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-PROF-02",
+      "text": "Resume parsing is handled server-side. The FE only uploads the file and receives structured JSON back.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-PROF-03",
+      "text": "Profile completeness indicator (F-PROF-01) is non-MVP but the dashboard API will return completeness data when available.",
+      "severity": "low",
+      "state": "open"
+    },
+    {
+      "id": "A-PROF-04",
+      "text": "The merge-or-replace prompt (BR-PROF-04) is handled in the resume confirm step, not as a separate screen.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-PROF-05",
+      "text": "Skills, experience, and education managers use inline forms or modals for add/edit rather than separate route-based pages.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-PROF-06",
+      "text": "File upload uses multipart/form-data. The Zod schema for ResumeUploadRequest describes metadata; the actual file binary is sent as a form part.",
+      "severity": "medium",
+      "state": "open"
+    }
+  ]
+}

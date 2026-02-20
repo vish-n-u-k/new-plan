@@ -1,0 +1,97 @@
+{
+  "moduleId": "M-RESGEN",
+  "contractVersion": "v1.2.0",
+  "schemas": [
+    {
+      "schemaId": "JDInputRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ jobDescriptionText: z.string().min(1, 'Job description is required').max(15000, 'Job description must be under 15,000 characters'), jobTitle: z.string().max(200, 'Job title must be under 200 characters').optional(), companyName: z.string().max(200, 'Company name must be under 200 characters').optional(), jobUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')) })",
+      "usedBy": ["generateTailoredResume", "S-RESGEN-01"]
+    },
+    {
+      "schemaId": "ProfileReadinessResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ isReady: z.boolean(), hasSkills: z.boolean(), hasExperiences: z.boolean(), missingItems: z.array(z.string()).optional() })",
+      "usedBy": ["checkProfileReadiness", "S-RESGEN-01"]
+    },
+    {
+      "schemaId": "RewrittenBulletPointSchema",
+      "purpose": "shared",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ originalText: z.string(), rewrittenText: z.string(), experienceId: z.string(), confidence: z.number().min(0).max(1).optional() })",
+      "usedBy": ["GenerateResumeResponseSchema"]
+    },
+    {
+      "schemaId": "SelectedExperienceSchema",
+      "purpose": "shared",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ experienceId: z.string(), companyName: z.string(), jobTitle: z.string(), startDate: z.string(), endDate: z.string().nullable(), bulletPoints: z.array(z.lazy(() => RewrittenBulletPointSchema)) })",
+      "usedBy": ["GenerateResumeResponseSchema"]
+    },
+    {
+      "schemaId": "SelectedEducationSchema",
+      "purpose": "shared",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ educationId: z.string(), institution: z.string(), degree: z.string(), fieldOfStudy: z.string().optional(), startDate: z.string().optional(), endDate: z.string().nullable().optional() })",
+      "usedBy": ["GenerateResumeResponseSchema"]
+    },
+    {
+      "schemaId": "GenerateResumeResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ resumeId: z.string().uuid(), jobDescriptionText: z.string(), summaryStatement: z.string(), selectedSkills: z.array(z.object({ skillId: z.string(), name: z.string(), proficiency: z.string().optional() })), selectedExperiences: z.array(SelectedExperienceSchema), selectedEducation: z.array(SelectedEducationSchema), rewrittenBulletPoints: z.array(RewrittenBulletPointSchema), generatedAt: z.string().datetime(), aiModelVersion: z.string().optional() })",
+      "usedBy": ["generateTailoredResume", "S-RESGEN-02"]
+    },
+    {
+      "schemaId": "TemplateSchema",
+      "purpose": "shared",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ templateId: z.string().uuid(), name: z.string(), description: z.string().optional(), thumbnailUrl: z.string().url(), category: z.string().optional(), isPremium: z.boolean().default(false) })",
+      "usedBy": ["TemplateListResponseSchema"]
+    },
+    {
+      "schemaId": "TemplateListResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ templates: z.array(TemplateSchema).min(3, 'At least 3 templates must be available') })",
+      "usedBy": ["listTemplates", "S-RESGEN-03"]
+    },
+    {
+      "schemaId": "TemplatePreviewRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ templateId: z.string().uuid(), resumeId: z.string().uuid() })",
+      "usedBy": ["previewTemplate", "S-RESGEN-03"]
+    },
+    {
+      "schemaId": "TemplatePreviewResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ previewUrl: z.string().url().optional(), previewHtml: z.string().optional(), templateId: z.string().uuid(), resumeId: z.string().uuid() })",
+      "usedBy": ["previewTemplate", "S-RESGEN-03"]
+    },
+    {
+      "schemaId": "FinalizeResumeRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ selectedTemplateId: z.string().uuid(), resumeId: z.string().uuid() })",
+      "usedBy": ["finalizeResume", "S-RESGEN-03"]
+    },
+    {
+      "schemaId": "FinalizeResumeResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ resumeId: z.string().uuid(), templateId: z.string().uuid(), status: z.enum(['finalized', 'ready_for_edit']), redirectUrl: z.string() })",
+      "usedBy": ["finalizeResume", "S-RESGEN-03"]
+    },
+    {
+      "schemaId": "ResgenErrorSchema",
+      "purpose": "error",
+      "targetFile": "src/schemas/resgen.schema.ts",
+      "definition": "z.object({ statusCode: z.number().int(), error: z.string(), message: z.string(), retryable: z.boolean().default(false), field: z.string().optional() })",
+      "usedBy": ["generateTailoredResume", "checkProfileReadiness", "listTemplates", "previewTemplate", "finalizeResume"]
+    }
+  ]
+}

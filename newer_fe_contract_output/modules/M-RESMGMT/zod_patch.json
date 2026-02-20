@@ -1,0 +1,76 @@
+{
+  "moduleId": "M-RESMGMT",
+  "contractVersion": "v1.2.0",
+  "schemas": [
+    {
+      "schemaId": "ResumeListItemSchema",
+      "purpose": "display",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ id: z.string().uuid(), jobTitle: z.string(), companyName: z.string().nullable(), createdAt: z.string().datetime(), templateName: z.string(), templatePreviewUrl: z.string().url().nullable() })",
+      "usedBy": ["listResumes", "S-RESMGMT-01"]
+    },
+    {
+      "schemaId": "ResumeListResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ resumes: z.array(ResumeListItemSchema), totalCount: z.number().int().nonnegative() })",
+      "usedBy": ["listResumes", "S-RESMGMT-01"]
+    },
+    {
+      "schemaId": "ResumeDeleteRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ resumeId: z.string().uuid('Invalid resume ID') })",
+      "usedBy": ["deleteResume", "S-RESMGMT-01"]
+    },
+    {
+      "schemaId": "ResumeDeleteResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ message: z.string(), deletedResumeId: z.string().uuid() })",
+      "usedBy": ["deleteResume"]
+    },
+    {
+      "schemaId": "ResumeDetailRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ resumeId: z.string().uuid('Invalid resume ID') })",
+      "usedBy": ["getResumeDetail", "S-RESMGMT-02"]
+    },
+    {
+      "schemaId": "ResumeDetailSchema",
+      "purpose": "display",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ id: z.string().uuid(), jobTitle: z.string(), companyName: z.string().nullable(), createdAt: z.string().datetime(), updatedAt: z.string().datetime(), templateId: z.string().uuid(), templateName: z.string(), previewHtml: z.string(), resumeData: z.record(z.unknown()) })",
+      "usedBy": ["getResumeDetail", "S-RESMGMT-02"]
+    },
+    {
+      "schemaId": "ResumeDetailResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ resume: ResumeDetailSchema })",
+      "usedBy": ["getResumeDetail", "S-RESMGMT-02"]
+    },
+    {
+      "schemaId": "ResumeDownloadRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ resumeId: z.string().uuid('Invalid resume ID') })",
+      "usedBy": ["downloadResumePdf", "S-RESMGMT-02"]
+    },
+    {
+      "schemaId": "ResumeDownloadResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ downloadUrl: z.string().url(), fileName: z.string(), expiresAt: z.string().datetime().optional() })",
+      "usedBy": ["downloadResumePdf"]
+    },
+    {
+      "schemaId": "ResumeManagementErrorSchema",
+      "purpose": "error",
+      "targetFile": "src/schemas/resume-management.schema.ts",
+      "definition": "z.object({ statusCode: z.number().int(), error: z.string(), message: z.string(), resumeId: z.string().uuid().optional() })",
+      "usedBy": ["listResumes", "getResumeDetail", "deleteResume", "downloadResumePdf"]
+    }
+  ]
+}

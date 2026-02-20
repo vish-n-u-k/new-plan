@@ -1,0 +1,373 @@
+{
+  "moduleId": "M-EDITOR",
+  "contractVersion": "v1.2.0",
+  "status": "draft",
+
+  "navigationMap": {
+    "rootScreenId": "S-EDIT-01",
+    "flowType": "contextual",
+    "sidebarGroup": null
+  },
+
+  "layout": {
+    "template": "split_view_detail",
+    "containerRoute": "/resumes/:resumeId/edit",
+    "sidebar": {
+      "visible": false,
+      "order": null
+    },
+    "breadcrumb": {
+      "label": "Edit Resume",
+      "show": true
+    },
+    "screensPositioning": {
+      "arrangement": "split-horizontal",
+      "regions": [
+        {
+          "regionId": "editor-panel",
+          "zone": "left",
+          "basis": "50%",
+          "minWidth": "400px",
+          "scrollable": true,
+          "screens": [
+            {
+              "screenId": "S-EDIT-01",
+              "visibility": "always",
+              "condition": null,
+              "order": 1
+            }
+          ]
+        },
+        {
+          "regionId": "preview-panel",
+          "zone": "right",
+          "basis": "50%",
+          "minWidth": "400px",
+          "scrollable": true,
+          "screens": [
+            {
+              "screenId": "S-EDIT-02",
+              "visibility": "always",
+              "condition": null,
+              "order": 1
+            }
+          ]
+        }
+      ]
+    },
+    "standardControls": [
+      {
+        "id": "ctrl-editor-save",
+        "type": "submit",
+        "label": "Save Resume",
+        "position": "top_right",
+        "visualPriority": "primary"
+      },
+      {
+        "id": "ctrl-editor-cancel",
+        "type": "cancel_link",
+        "label": "Cancel",
+        "position": "top_left",
+        "visualPriority": "secondary"
+      },
+      {
+        "id": "ctrl-editor-template-switcher",
+        "type": "dropdown",
+        "label": "Change Template",
+        "position": "preview_header",
+        "visualPriority": "secondary"
+      }
+    ]
+  },
+
+  "screens": [
+    {
+      "screenId": "S-EDIT-01",
+      "name": "Content Editor",
+      "type": "input_driven",
+      "navigation": {
+        "route": "/resumes/:resumeId/edit",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [
+        {
+          "field": "resumeContent",
+          "source": "api",
+          "schemaRef": "zod://ResumeContentResponseSchema"
+        }
+      ],
+      "dataCaptured": [
+        {
+          "field": "personalInfo.fullName",
+          "required": true,
+          "schemaRef": "zod://ResumeEditRequestSchema"
+        },
+        {
+          "field": "personalInfo.email",
+          "required": true,
+          "schemaRef": "zod://ResumeEditRequestSchema"
+        },
+        {
+          "field": "personalInfo.phone",
+          "required": false,
+          "schemaRef": "zod://ResumeEditRequestSchema"
+        },
+        {
+          "field": "personalInfo.location",
+          "required": false,
+          "schemaRef": "zod://ResumeEditRequestSchema"
+        },
+        {
+          "field": "personalInfo.linkedIn",
+          "required": false,
+          "schemaRef": "zod://ResumeEditRequestSchema"
+        },
+        {
+          "field": "summary",
+          "required": false,
+          "schemaRef": "zod://ResumeEditRequestSchema"
+        },
+        {
+          "field": "sections",
+          "required": true,
+          "schemaRef": "zod://ResumeEditRequestSchema"
+        },
+        {
+          "field": "sections[].title",
+          "required": true,
+          "schemaRef": "zod://ResumeSectionSchema"
+        },
+        {
+          "field": "sections[].type",
+          "required": true,
+          "schemaRef": "zod://ResumeSectionSchema"
+        },
+        {
+          "field": "sections[].order",
+          "required": true,
+          "schemaRef": "zod://ResumeSectionSchema"
+        },
+        {
+          "field": "sections[].items",
+          "required": true,
+          "schemaRef": "zod://ResumeSectionSchema"
+        },
+        {
+          "field": "sections[].items[].content",
+          "required": true,
+          "schemaRef": "zod://ResumeSectionItemSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-EDIT-01-SAVE",
+          "type": "api_call",
+          "description": "Save the edited resume content to the server, persisting all inline edits, reordered sections, and added/removed items.",
+          "targetScreenId": null,
+          "endpointOperationId": "saveResumeEdits",
+          "onSuccess": {
+            "behavior": "redirect",
+            "targetScreenId": "S-RESMGMT-DETAIL"
+          },
+          "onCancel": null
+        },
+        {
+          "id": "INT-EDIT-01-CANCEL",
+          "type": "navigation",
+          "description": "Cancel editing and navigate away. Triggers unsaved changes confirmation prompt per BR-EDIT-02.",
+          "targetScreenId": "S-RESMGMT-DASHBOARD",
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": {
+            "behavior": "stay",
+            "message": "You have unsaved changes. Are you sure you want to leave?"
+          }
+        },
+        {
+          "id": "INT-EDIT-01-REORDER",
+          "type": "local_state",
+          "description": "Drag-and-drop reorder of resume sections. Updates local section order array which is reflected in live preview.",
+          "targetScreenId": null,
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-EDIT-01-ADD-ITEM",
+          "type": "local_state",
+          "description": "Add a new bullet point, skill, or item to a resume section.",
+          "targetScreenId": null,
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        },
+        {
+          "id": "INT-EDIT-01-REMOVE-ITEM",
+          "type": "local_state",
+          "description": "Remove an existing bullet point, skill, or item from a resume section.",
+          "targetScreenId": null,
+          "endpointOperationId": null,
+          "onSuccess": null,
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Loading resume content...",
+        "empty": null,
+        "error": "Unable to load resume content. Please try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "getResumeContent",
+          "method": "GET",
+          "path": "/api/resumes/:resumeId",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://ResumeContentResponseSchema",
+          "errorSchemaRef": "zod://EditorErrorSchema"
+        },
+        {
+          "operationId": "saveResumeEdits",
+          "method": "PUT",
+          "path": "/api/resumes/:resumeId",
+          "requestSchemaRef": "zod://ResumeEditRequestSchema",
+          "responseSchemaRef": "zod://ResumeEditResponseSchema",
+          "errorSchemaRef": "zod://EditorErrorSchema"
+        }
+      ]
+    },
+    {
+      "screenId": "S-EDIT-02",
+      "name": "Live Preview",
+      "type": "api_driven",
+      "navigation": {
+        "route": "/resumes/:resumeId/edit",
+        "parentScreenId": null
+      },
+      "dataDisplayed": [
+        {
+          "field": "renderedPreview",
+          "source": "derived",
+          "schemaRef": "zod://ResumePreviewResponseSchema"
+        },
+        {
+          "field": "selectedTemplateId",
+          "source": "local_state",
+          "schemaRef": "zod://TemplateSwitchSchema"
+        },
+        {
+          "field": "availableTemplates",
+          "source": "api",
+          "schemaRef": "zod://TemplateListResponseSchema"
+        }
+      ],
+      "dataCaptured": [
+        {
+          "field": "templateId",
+          "required": true,
+          "schemaRef": "zod://TemplateSwitchSchema"
+        }
+      ],
+      "interactions": [
+        {
+          "id": "INT-EDIT-02-SWITCH-TEMPLATE",
+          "type": "api_call",
+          "description": "Change the active template for the resume preview. Fetches the new template and re-renders the preview with current editor content.",
+          "targetScreenId": null,
+          "endpointOperationId": "getTemplateList",
+          "onSuccess": {
+            "behavior": "refresh_preview",
+            "targetScreenId": null
+          },
+          "onCancel": null
+        }
+      ],
+      "states": {
+        "loading": "Rendering preview...",
+        "empty": null,
+        "error": "Unable to render preview. Please try again."
+      },
+      "endpointProposals": [
+        {
+          "operationId": "getTemplateList",
+          "method": "GET",
+          "path": "/api/templates",
+          "requestSchemaRef": null,
+          "responseSchemaRef": "zod://TemplateListResponseSchema",
+          "errorSchemaRef": "zod://EditorErrorSchema"
+        }
+      ]
+    }
+  ],
+
+  "businessRules": [
+    {
+      "ruleId": "BR-EDIT-01",
+      "description": "Edits made in the resume editor do not modify the user's base profile data. They only affect the current resume.",
+      "enforcement": "The editor operates on a copy of resume data fetched via getResumeContent. Save (saveResumeEdits) only updates the resume entity, never the profile entity.",
+      "measurable": true
+    },
+    {
+      "ruleId": "BR-EDIT-02",
+      "description": "Users must explicitly save or finalize their edits. Navigating away without saving triggers a confirmation prompt.",
+      "enforcement": "A dirty-state flag tracks unsaved changes. Navigation guards (beforeunload, route change interceptor) trigger a confirmation modal when dirty state is true.",
+      "measurable": true
+    }
+  ],
+
+  "assumptions": [
+    {
+      "id": "A-EDIT-001",
+      "text": "The editor is accessed as a contextual flow from Resume Generation (after AI generates content) or from Resume Management (re-edit an existing resume). It is not directly accessible from the sidebar.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-EDIT-002",
+      "text": "The Content Editor (S-EDIT-01) and Live Preview (S-EDIT-02) share the same route (/resumes/:resumeId/edit) and are displayed side-by-side in a split-view layout on the same page.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-EDIT-003",
+      "text": "Real-time preview updates are driven by local state changes in the editor — no additional API call is needed to re-render the preview. The preview component reactively consumes the editor's in-memory resume data.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-EDIT-004",
+      "text": "Section drag-and-drop reordering updates the 'order' field on each section object locally; the new order is persisted only when the user explicitly saves.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-EDIT-005",
+      "text": "The template switcher dropdown fetches the list of available templates once on mount and allows the user to switch the preview template without affecting the saved resume data until save.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-EDIT-006",
+      "text": "On successful save (INT-EDIT-01-SAVE), the user is redirected to the Resume Detail View (S-RESMGMT-DETAIL) in the M-RESMGMT module.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-EDIT-007",
+      "text": "On cancel (INT-EDIT-01-CANCEL), if the user confirms leaving, they are redirected to the Resume Dashboard (S-RESMGMT-DASHBOARD) or the referrer page in the generation flow.",
+      "severity": "medium",
+      "state": "open"
+    },
+    {
+      "id": "A-EDIT-008",
+      "text": "The resume data model supports a generic sections array where each section has a type (e.g., 'experience', 'education', 'skills', 'custom'), enabling flexible section management.",
+      "severity": "high",
+      "state": "open"
+    },
+    {
+      "id": "A-EDIT-009",
+      "text": "The selectedTemplateId is persisted as part of the resume save payload so the chosen template is remembered for future preview/export.",
+      "severity": "medium",
+      "state": "open"
+    }
+  ]
+}

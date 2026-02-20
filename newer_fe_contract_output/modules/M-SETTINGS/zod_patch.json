@@ -1,0 +1,83 @@
+{
+  "moduleId": "M-SETTINGS",
+  "contractVersion": "v1.2.0",
+  "schemas": [
+    {
+      "schemaId": "ChangeEmailRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ newEmail: z.string().email('Please enter a valid email address'), currentPasswordForEmail: z.string().min(1, 'Current password is required to change email') })",
+      "usedBy": ["changeEmail", "S-SET-01"]
+    },
+    {
+      "schemaId": "ChangeEmailResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ message: z.string(), email: z.string().email() })",
+      "usedBy": ["changeEmail"]
+    },
+    {
+      "schemaId": "ChangePasswordRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ currentPassword: z.string().min(1, 'Current password is required'), newPassword: z.string().min(8, 'Password must be at least 8 characters').regex(/[a-zA-Z]/, 'Password must contain at least one letter').regex(/[0-9]/, 'Password must contain at least one number'), confirmNewPassword: z.string().min(1, 'Please confirm your new password') }).refine((data) => data.newPassword === data.confirmNewPassword, { message: 'Passwords do not match', path: ['confirmNewPassword'] })",
+      "usedBy": ["changePassword", "S-SET-01"]
+    },
+    {
+      "schemaId": "ChangePasswordResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ message: z.string() })",
+      "usedBy": ["changePassword"]
+    },
+    {
+      "schemaId": "DeleteAccountRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ deleteConfirmationText: z.string().refine((val) => val === 'DELETE', { message: \"Please type 'DELETE' to confirm\" }), deleteConfirmationPassword: z.string().min(1, 'Password is required to delete account') })",
+      "usedBy": ["deleteAccount", "S-SET-01"]
+    },
+    {
+      "schemaId": "CurrentAccountInfoSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ userId: z.string().uuid(), email: z.string().email(), createdAt: z.string().datetime() })",
+      "usedBy": ["getAccountInfo", "S-SET-01"]
+    },
+    {
+      "schemaId": "ProfilePreferencesResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ defaultTemplateId: z.string().uuid().nullable() })",
+      "usedBy": ["getProfilePreferences", "S-SET-02"]
+    },
+    {
+      "schemaId": "AvailableTemplatesResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ templates: z.array(z.object({ templateId: z.string().uuid(), name: z.string(), thumbnailUrl: z.string().url().optional() })) })",
+      "usedBy": ["getAvailableTemplates", "S-SET-02"]
+    },
+    {
+      "schemaId": "UpdateTemplatePreferenceRequestSchema",
+      "purpose": "request",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ defaultTemplateId: z.string().uuid('Please select a valid template') })",
+      "usedBy": ["updateTemplatePreference", "S-SET-02"]
+    },
+    {
+      "schemaId": "UpdateTemplatePreferenceResponseSchema",
+      "purpose": "response",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ message: z.string(), defaultTemplateId: z.string().uuid() })",
+      "usedBy": ["updateTemplatePreference"]
+    },
+    {
+      "schemaId": "SettingsErrorSchema",
+      "purpose": "error",
+      "targetFile": "src/schemas/settings.schema.ts",
+      "definition": "z.object({ statusCode: z.number().int(), error: z.string(), message: z.string(), field: z.string().optional() })",
+      "usedBy": ["getAccountInfo", "changeEmail", "changePassword", "deleteAccount", "getProfilePreferences", "getAvailableTemplates", "updateTemplatePreference"]
+    }
+  ]
+}

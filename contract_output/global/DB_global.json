@@ -1,0 +1,212 @@
+{
+  "contractVersion": "v1.0.0",
+  "status": "draft",
+  "generatedFrom": ["M-AUTH", "M-PROFILE", "M-RESGEN", "M-EDITOR", "M-RESMGMT", "M-SETTINGS"],
+
+  "sharedModels": [
+    {
+      "model": "User",
+      "description": "Core user entity referenced by all authenticated modules. Holds authentication credentials and serves as the foreign key anchor for all user-owned data.",
+      "referencedBy": ["M-AUTH", "M-PROFILE", "M-RESGEN", "M-EDITOR", "M-RESMGMT", "M-SETTINGS"],
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "attributes": ["@id", "@default(cuid())"],
+          "sourceRefs": ["global"]
+        },
+        {
+          "name": "email",
+          "type": "String",
+          "attributes": ["@unique"],
+          "sourceRefs": ["M-AUTH"]
+        },
+        {
+          "name": "passwordHash",
+          "type": "String",
+          "attributes": [],
+          "sourceRefs": ["M-AUTH"]
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "attributes": ["@default(now())"],
+          "sourceRefs": ["global"]
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "attributes": ["@updatedAt"],
+          "sourceRefs": ["global"]
+        }
+      ]
+    },
+    {
+      "model": "Resume",
+      "description": "A generated resume entity. Created during resume generation, edited in the editor, and managed (listed, viewed, downloaded, deleted) in resume management.",
+      "referencedBy": ["M-RESGEN", "M-EDITOR", "M-RESMGMT"],
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "attributes": ["@id", "@default(cuid())"],
+          "sourceRefs": ["global"]
+        },
+        {
+          "name": "userId",
+          "type": "String",
+          "attributes": [],
+          "sourceRefs": ["global"],
+          "relation": {
+            "model": "User",
+            "field": "id",
+            "onDelete": "Cascade"
+          }
+        },
+        {
+          "name": "jobTitle",
+          "type": "String?",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN", "M-RESMGMT"]
+        },
+        {
+          "name": "companyName",
+          "type": "String?",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN", "M-RESMGMT"]
+        },
+        {
+          "name": "jobDescriptionText",
+          "type": "String",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN"]
+        },
+        {
+          "name": "resumeData",
+          "type": "Json",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN", "M-EDITOR", "M-RESMGMT"],
+          "description": "Structured JSON containing personal info, summary, and sections array with all resume content."
+        },
+        {
+          "name": "templateId",
+          "type": "String",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN", "M-EDITOR", "M-RESMGMT"],
+          "relation": {
+            "model": "Template",
+            "field": "id"
+          }
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "attributes": ["@default(now())"],
+          "sourceRefs": ["global"]
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "attributes": ["@updatedAt"],
+          "sourceRefs": ["global"]
+        }
+      ]
+    },
+    {
+      "model": "Template",
+      "description": "Resume template definitions. Referenced by resume generation (selection), editor (switching), resume management (display), and settings (default preference).",
+      "referencedBy": ["M-RESGEN", "M-EDITOR", "M-RESMGMT", "M-SETTINGS"],
+      "fields": [
+        {
+          "name": "id",
+          "type": "String",
+          "attributes": ["@id", "@default(cuid())"],
+          "sourceRefs": ["global"]
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN", "M-EDITOR"]
+        },
+        {
+          "name": "description",
+          "type": "String?",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN", "M-EDITOR"]
+        },
+        {
+          "name": "thumbnailUrl",
+          "type": "String",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN", "M-EDITOR", "M-SETTINGS"]
+        },
+        {
+          "name": "category",
+          "type": "String?",
+          "attributes": [],
+          "sourceRefs": ["M-RESGEN"]
+        },
+        {
+          "name": "isPremium",
+          "type": "Boolean",
+          "attributes": ["@default(false)"],
+          "sourceRefs": ["M-RESGEN"]
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "attributes": ["@default(now())"],
+          "sourceRefs": ["global"]
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "attributes": ["@updatedAt"],
+          "sourceRefs": ["global"]
+        }
+      ]
+    }
+  ],
+
+  "sharedEnums": [
+    {
+      "name": "ProficiencyLevel",
+      "values": ["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"],
+      "referencedBy": ["M-PROFILE"],
+      "description": "Skill proficiency levels. Defined globally for consistency since skills appear in both profile and resume contexts."
+    },
+    {
+      "name": "ResumeSectionType",
+      "values": ["EXPERIENCE", "EDUCATION", "SKILLS", "CERTIFICATIONS", "PROJECTS", "AWARDS", "LANGUAGES", "CUSTOM"],
+      "referencedBy": ["M-EDITOR", "M-RESGEN"],
+      "description": "Types of sections that can appear in a resume. Used by the editor's section management and the generation output."
+    }
+  ],
+
+  "conventions": {
+    "idStrategy": "cuid",
+    "timestamps": {
+      "createdAt": true,
+      "updatedAt": true,
+      "format": "DateTime"
+    },
+    "softDelete": {
+      "enabled": false,
+      "field": "deletedAt",
+      "type": "DateTime?"
+    },
+    "namingConvention": {
+      "models": "PascalCase",
+      "fields": "camelCase",
+      "enums": "PascalCase",
+      "enumValues": "SCREAMING_SNAKE_CASE"
+    },
+    "relationNaming": "descriptive — e.g. 'author' not 'userId_rel'"
+  },
+
+  "databaseProvider": {
+    "provider": "postgresql",
+    "connectionEnvVar": "DATABASE_URL"
+  }
+}

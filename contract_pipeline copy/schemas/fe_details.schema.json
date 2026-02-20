@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fe_details.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["moduleId", "contractVersion", "status", "changeType", "screens"],
+  "properties": {
+    "moduleId": { "type": "string", "minLength": 1 },
+    "contractVersion": { "type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$" },
+    "status": { "enum": ["draft", "agreed", "frozen"] },
+    "changeType": { "enum": ["none", "non_breaking", "breaking"] },
+    "screens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["screenId", "name", "route", "type", "authRequired", "dataDisplayed", "dataCaptured", "endpointProposals"],
+        "properties": {
+          "screenId": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "route": { "type": "string", "pattern": "^/" },
+          "type": { "enum": ["static", "api_driven", "input_driven"] },
+          "authRequired": { "type": "boolean" },
+          "allowedRoles": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+          "dataDisplayed": { "type": "array", "items": { "$ref": "#/$defs/dataItem" } },
+          "dataCaptured": { "type": "array", "items": { "$ref": "#/$defs/capturedItem" } },
+          "interactions": { "type": "array", "items": { "type": "string" } },
+          "states": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "loading": { "type": "string" },
+              "empty": { "type": "string" },
+              "error": { "type": "string" }
+            }
+          },
+          "endpointProposals": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/endpointProposal" }
+          }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "severity", "state"],
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "severity": { "enum": ["low", "medium", "high"] },
+          "state": { "enum": ["open", "confirmed", "rejected"] }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "dataItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "source", "schemaRef"],
+      "properties": {
+        "field": { "type": "string" },
+        "source": { "enum": ["static", "api"] },
+        "schemaRef": { "$ref": "#/$defs/zodRef" }
+      }
+    },
+    "capturedItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "required", "schemaRef"],
+      "properties": {
+        "field": { "type": "string" },
+        "required": { "type": "boolean" },
+        "schemaRef": { "$ref": "#/$defs/zodRef" }
+      }
+    },
+    "endpointProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operationId", "method", "path", "responseSchemaRef", "errorSchemaRef"],
+      "properties": {
+        "operationId": { "type": "string" },
+        "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+        "path": { "type": "string", "pattern": "^/api/" },
+        "requestSchemaRef": {
+          "anyOf": [{ "$ref": "#/$defs/zodRef" }, { "type": "null" }]
+        },
+        "responseSchemaRef": { "$ref": "#/$defs/zodRef" },
+        "errorSchemaRef": { "$ref": "#/$defs/zodRef" }
+      }
+    },
+    "zodRef": {
+      "type": "string",
+      "pattern": "^zod://[A-Za-z0-9_]+$"
+    }
+  }
+}
