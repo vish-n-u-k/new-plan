@@ -27,6 +27,10 @@ Follow these phases strictly and in order.
    - Authentication method (email/password, OAuth, OTP, etc.)
    - Core value proposition — what problem does the app solve?
    - Any third-party integrations (payments, maps, notifications, etc.)
+   - **Navigation preference**: Top navigation bar, left sidebar, or both?
+   - **Internal navigation**: Breadcrumbs, tabs, side panel navigation?
+   - **Layout preference**: Full-screen, 2-column, 3-column, or adaptive?
+   - **Design considerations**: Desktop-first, mobile-first, or responsive design?
 3. Ask the user **one focused round** of clarifying questions covering all the gaps you found. Do NOT proceed until you have answers.
 
 ### Phase 2 — Draft the Module Breakdown
@@ -46,6 +50,20 @@ Follow these phases strictly and in order.
    - Error / Empty states
    - Admin panel (if applicable)
 
+### Phase 2.5 — Analyze Navigation & Layout Requirements
+
+1. **Navigation Architecture**:
+   - Based on the modules and user flow, recommend the best navigation position (top bar, left sidebar, or both).
+   - Suggest internal navigation patterns (tabs for related screens, breadcrumbs for hierarchy, collapsible menu for nested items).
+   - List primary and secondary navigation items.
+   - Indicate which screens need quick access vs. less-frequent access.
+
+2. **Layout Structure**:
+   - Recommend optimal layout for the primary module (full-screen, 2-column, 3-column, adaptive).
+   - Specify what goes in each column/section (e.g., left: navigation, center: content, right: details/settings).
+   - Consider design patterns for different user types (admin vs. end-user layouts may differ).
+
+
 ### Phase 3 — Validate with the User (Iterative)
 
 Walk through the breakdown **one module at a time** with the user:
@@ -57,9 +75,14 @@ Walk through the breakdown **one module at a time** with the user:
    - Are the requirements and business rules accurate?
    - Any additional features or constraints to add?
 3. Incorporate feedback before moving to the next module.
-4. After all modules are validated, ask:
+4. After all modules are validated, review the navigation and layout recommendations:
+   - Does the proposed navigation structure (top/left/both) work for your use case?
+   - Are the suggested internal navigation patterns (tabs, breadcrumbs, etc.) suitable?
+   - Is the recommended layout (full-screen, 2-column, 3-column) optimal?
+   - Would you prefer any adjustments to the proposed template?
+5. Ask for final confirmation:
    - "Are there any modules, screens, or features I missed entirely?"
-   - "Any final changes before I generate the output?"
+   - "Any final changes to the navigation or layout before I generate the output?"
 
 ### Phase 4 — Generate Output
 
@@ -80,6 +103,19 @@ The output must be valid JSON saved to `analysis_output.json` with the following
   "app_description": "string — one-line summary of what the app does",
   "platform": "string — target platform (web / mobile / desktop / cross-platform)",
   "user_roles": ["string — list of user roles e.g. admin, user, guest"],
+  "navigation": {
+    "position": "string — 'top' | 'left' | 'top-and-left'",
+    "internal_navigation": ["string — internal navigation patterns e.g., 'tabs', 'breadcrumbs', 'collapsible-menu', 'side-panel'"],
+    "primary_nav_items": ["string — main navigation items"],
+    "secondary_nav_items": ["string — secondary or collapsed navigation items"],
+    "description": "string — brief explanation of how navigation flows"
+  },
+  "layout": {
+    "primary_layout": "string — 'full-screen' | '2-column' | '3-column' | 'adaptive'",
+    "layout_structure": "string — detailed description of what goes in each section/column",
+    "alternative_layouts": ["string — alternative layout options per user role or screen type"],
+    "ai_suggested_template": "string — best-practice template recommendation from AI analysis"
+  },
   "modules": [
     {
       "module_name": "string",
@@ -104,9 +140,10 @@ The output must be valid JSON saved to `analysis_output.json` with the following
 ## Rules
 
 - Never assume — if something is unclear, ask.
-- Never skip validation — every module must be confirmed by the user before finalizing.
+- Never skip validation — every module, navigation choice, and layout must be confirmed by the user before finalizing.
 - Keep requirements concrete and testable. Avoid vague statements like "user-friendly interface". Instead say "form validates email format on blur and shows inline error message".
 - Business logic must include numbers and constraints where applicable (limits, timeouts, retry counts, quotas).
+- **Navigation and Layout decisions must be justified**: Explain why a left sidebar is better than top navigation, or why 3-column layout serves the use case.
 - Do not include implementation details (tech stack, database schema, API design). This is a product-level analysis only.
 - If the user's idea is too broad, help them scope it down to an MVP first, then optionally expand.
 - Always output valid JSON — no trailing commas, no unquoted keys, no comments.
