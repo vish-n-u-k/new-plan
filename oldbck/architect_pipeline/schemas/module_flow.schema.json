@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/module_flow.schema.json",
+  "type": "object",
+  "required": ["moduleId", "summary", "flows"],
+  "properties": {
+    "moduleId": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "required": ["screens", "endpoints", "dbModels"],
+      "properties": {
+        "screens": { "type": "integer", "minimum": 0 },
+        "endpoints": { "type": "integer", "minimum": 0 },
+        "dbModels": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["flowId", "screenAction", "endpoint", "middleware", "permissions", "dbOperations"],
+        "properties": {
+          "flowId": { "type": "string" },
+          "screenAction": { "type": "string" },
+          "endpoint": {
+            "type": "object",
+            "required": ["operationId", "method", "path"],
+            "properties": {
+              "operationId": { "type": "string" },
+              "method": { "type": "string" },
+              "path": { "type": "string" }
+            }
+          },
+          "middleware": { "type": "array", "items": { "type": "string" } },
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "roles": { "type": "array", "items": { "type": "string" } },
+              "permissions": { "type": "array", "items": { "type": "string" } },
+              "source": { "type": "string" }
+            }
+          },
+          "dbOperations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["model", "operationType"],
+              "properties": {
+                "model": { "type": "string" },
+                "operationType": { "type": "string", "enum": ["create", "read", "update", "delete", "upsert", "aggregate", "unknown"] },
+                "triggerType": { "type": "string", "enum": ["db_trigger", "event", "webhook", "job", "none", "unknown"] }
+              }
+            }
+          },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] }
+        }
+      }
+    }
+  }
+}

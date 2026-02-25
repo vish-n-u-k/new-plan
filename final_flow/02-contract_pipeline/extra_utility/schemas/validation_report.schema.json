@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "validation_report.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["moduleId", "contractVersion", "passed", "errors", "warnings", "generatedAt"],
+  "properties": {
+    "moduleId": { "type": "string" },
+    "contractVersion": { "type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$" },
+    "passed": { "type": "boolean" },
+    "errors": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message", "owner", "artifact", "path"],
+      "properties": {
+        "code": { "type": "string" },
+        "severity": { "enum": ["error", "warning"] },
+        "message": { "type": "string" },
+        "owner": { "enum": ["fe", "be", "db", "shared"] },
+        "artifact": { "type": "string" },
+        "path": { "type": "string" }
+      }
+    }
+  }
+}

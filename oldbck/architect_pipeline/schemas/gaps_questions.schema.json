@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/gaps_questions.schema.json",
+  "type": "object",
+  "required": ["version", "questions"],
+  "properties": {
+    "version": { "type": "string" },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["questionId", "title", "description", "impact", "options", "recommendedOptionId", "allowCustomOption"],
+        "properties": {
+          "questionId": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "impact": { "type": "string", "enum": ["low", "medium", "high"] },
+          "options": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["optionId", "label", "source", "resolutionEffect", "confidence"],
+              "properties": {
+                "optionId": { "type": "string" },
+                "label": { "type": "string" },
+                "source": { "type": "string", "enum": ["openapi", "fe_details", "prisma_contract", "inferred", "custom"] },
+                "resolutionEffect": { "type": "string" },
+                "pros": { "type": "array", "items": { "type": "string" } },
+                "cons": { "type": "array", "items": { "type": "string" } },
+                "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+                "why": { "type": "string" }
+              }
+            }
+          },
+          "recommendedOptionId": { "type": "string" },
+          "allowCustomOption": { "type": "boolean", "const": true }
+        }
+      }
+    }
+  }
+}

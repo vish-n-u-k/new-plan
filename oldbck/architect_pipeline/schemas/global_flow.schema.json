@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/global_flow.schema.json",
+  "type": "object",
+  "required": ["version", "generatedAt", "modules", "nodes", "edges", "issues"],
+  "properties": {
+    "version": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "modules": { "type": "array", "items": { "type": "string" } },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "moduleId", "label"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["route", "screen", "action", "endpoint", "middleware", "permission", "db_model", "db_operation", "side_effect"] },
+          "moduleId": { "type": "string" },
+          "label": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "evidenceRefs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "from", "to", "relation", "flowType"],
+        "properties": {
+          "id": { "type": "string" },
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "relation": { "type": "string" },
+          "flowType": { "type": "string", "enum": ["http", "event"] },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "evidenceRefs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "issues": {
+      "type": "object",
+      "required": ["unresolvedLinks", "conflicts", "gaps"],
+      "properties": {
+        "unresolvedLinks": { "type": "array", "items": { "type": "string" } },
+        "conflicts": { "type": "array", "items": { "type": "string" } },
+        "gaps": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
