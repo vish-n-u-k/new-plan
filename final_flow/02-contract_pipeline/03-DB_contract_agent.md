@@ -123,12 +123,30 @@ Do not implement migrations or services/routes.
   - Validate module data model decisions against `global/fe_global_contract.json` baseline policies.
   - If multiple app surfaces exist, keep surface-specific data ownership/access boundaries explicit.
 2. Derive relationships from operation semantics and field reuse.
-3. Propose Prisma model config (fields, types, relations, indexes, uniques).
+3. For every enum candidate, run an explicit volatility check before finalizing type choice:
+  - Check whether values are expected to change often (add/remove/rename/reorder) due to business/admin operations.
+  - Check whether non-engineering users may need to manage these values over time.
+  - Check whether values can vary by org/surface/locale or require metadata (label, sort order, active flag).
+  - If likely to change frequently, model as lookup table + relation (not enum).
+  - If stable and controlled, enum is allowed.
+  - If confidence is not high, ask user for confirmation before freezing the decision.
+4. Propose Prisma model config (fields, types, relations, indexes, uniques).
   - Apply approved analysis constraints for uniqueness/limits/retention/audit when FE/BE do not already conflict.
-3.1 If multilingual is required, define localization storage strategy explicitly (for example: per-locale fields/table strategy) or record high-risk assumption.
-4. Map each DB field to upstream contract refs for traceability.
-5. If model decisions depend on unresolved high-risk assumptions, record DB blockers and keep those decisions explicitly tentative.
-6. If analysis-derived constraint conflicts with FE/BE intent, do not auto-merge; raise blocker and ask user.
+4.1 If multilingual is required, define localization storage strategy explicitly (for example: per-locale fields/table strategy) or record high-risk assumption.
+5. Map each DB field to upstream contract refs for traceability.
+6. If model decisions depend on unresolved high-risk assumptions, record DB blockers and keep those decisions explicitly tentative.
+7. If analysis-derived constraint conflicts with FE/BE intent, do not auto-merge; raise blocker and ask user.
+
+### Enum vs Lookup Decision Gate (required)
+
+For every value set initially considered as enum:
+- Classify as `stable` or `frequently_updated`.
+- `frequently_updated` must be implemented as lookup table, not enum.
+- Record reason in plain language (for example: "business team may add values monthly").
+- If classification is uncertain, ask one user confirmation question before write mode.
+
+Default recommendation when uncertain:
+- Prefer lookup table if there is any realistic expectation of ongoing value changes.
 
 ---
 
@@ -175,6 +193,8 @@ Do not implement migrations or services/routes.
 }
 ```
 
+When an enum candidate is classified as `frequently_updated`, represent it under `models` as a lookup entity and relation target instead of adding it to `enumDefs`.
+
 ---
 
 ## Hard Rules
@@ -189,6 +209,9 @@ Do not implement migrations or services/routes.
 - Never silently upgrade `pending_human_review` to confirmed.
 - For high-risk assumptions, set isolation guidance before freezing DB contract status.
 - Keep user-facing summaries non-technical even when output files are technical JSON.
+- For each enum candidate, perform and document an explicit volatility check (`stable` vs `frequently_updated`).
+- Any `frequently_updated` value set must be modeled as lookup table + relation, not enum.
+- If volatility classification confidence is medium/low, ask user confirmation before finalizing type choice.
 - For each DB blocker or non-trivial refinement, include `sourceProvenance` in validation report using one of: `fe`, `be`, `analysis_global`, `analysis_module`, `blocked_parking_lot`.
 - Do not treat `technical_parking_lot` as contract truth unless user explicitly approves promotion.
 - Never write output files before explicit user confirmation for the reviewed module/chunk.

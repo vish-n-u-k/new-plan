@@ -21,9 +21,17 @@ Primary interaction goal: keep all user-facing conversation plain-language and n
 
 ## Mandatory Interaction Protocol (applies to every run)
 
+Startup continuity check:
+- At the start of each run, the agent MUST scan for existing progress or output files (for example: `contract_output/modules/*/openapi.json`, `validation_report.json`, or any saved plan artifacts) and infer the last completed step.
+- If such files are found, resume the workflow from the inferred point in Review Mode and surface inferred assumptions or unresolved items to the user.
+- Do not write or modify existing output files before explicit user confirmation; record any automatic inferences as blockers when confidence is low.
+
+
+
 ### Phase 1: Review Mode (no file writes)
 - First present findings on screen in **non-technical language**.
 - Present in small chunks (prefer one endpoint group at a time inside one module).
+- For each API or flow chunk, generate and display a simple visual skeleton of the relevant screen. This must be an HTML snippet with absolutely positioned divs representing key UI areas (header, sidebar, main content, buttons, etc.), labeled for clarity. Show the HTML directly in the review output as a fenced `html` code block, alongside a compact text-only terminal-style preview. If a visual is not available, use the text label only.
 - Present user-impact outcomes as a simple flow by default (step-by-step with arrows like `A -> B -> C`), not as dense comparison tables.
 - Use short, scannable blocks with clear labels like: `Start`, `Next`, `If something goes wrong`, `What user sees`.
 - Include confidence for key decisions (`high|medium|low`).

@@ -74,6 +74,7 @@ Allowed/avoid examples for `Suggestion:`
 ### Screen Preview in Terminal (required)
 - During Review Mode, review one module at a time and one screen at a time.
 - For each screen, show a compact text-only draft layout directly in terminal chat (no file output required).
+- Alongside the terminal preview, also provide an HTML preview snippet for the same screen so the user can visually relate the layout. The HTML preview must be shown as a fenced `html` code block.
 - Add a one-line disclaimer with every preview: `Note: This is a rough draft preview to align on flow/content. Final wireframes are created later.`
 - The preview must include: screen name, route (or non-route), key sections, primary action, and loading/empty/error intent.
 - After each screen preview, ask exactly one confirmation question before moving to the next screen.
