@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "zod_patch.schema.json",
+  "$id": "be_contract_schema_patch.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": ["moduleId", "contractVersion", "schemas"],

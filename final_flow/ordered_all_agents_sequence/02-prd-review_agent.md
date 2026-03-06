@@ -38,17 +38,17 @@ Input precedence rule (deterministic):
 If metadata is missing, do not guess. Mark it as unknown in the report.
 
 If `prd_bundle_path` is provided, load and merge:
-- `index.json`
-- `_meta.json`
-- `global_experience.json`
-- `assumptions.json`
-- `out_of_scope.json`
-- `open_questions.json`
-- `technical_parking_lot.json`
-- `traceability/links.json`
-- `traceability/coverage.json`
-- all files under `modules/*.json`
-- `spikes_required.json`
+- `analysis_output/index.json` (or `<prd_bundle_path>/index.json`)
+- `analysis_output/_meta.json` (or `<prd_bundle_path>/_meta.json`)
+- `analysis_output/global_experience.json` (or `<prd_bundle_path>/global_experience.json`)
+- `analysis_output/assumptions.json` (or `<prd_bundle_path>/assumptions.json`)
+- `analysis_output/out_of_scope.json` (or `<prd_bundle_path>/out_of_scope.json`)
+- `analysis_output/open_questions.json` (or `<prd_bundle_path>/open_questions.json`)
+- `analysis_output/technical_parking_lot.json` (or `<prd_bundle_path>/technical_parking_lot.json`)
+- `analysis_output/traceability/links.json` (or `<prd_bundle_path>/traceability/links.json`)
+- `analysis_output/traceability/coverage.json` (or `<prd_bundle_path>/traceability/coverage.json`)
+- all files under `analysis_output/modules/*.json` (or `<prd_bundle_path>/modules/*.json`)
+- `analysis_output/spikes_required.json` (or `<prd_bundle_path>/spikes_required.json`)
 
 Then review the reconstructed canonical PRD object.
 
@@ -56,16 +56,16 @@ Canonical reconstruction rules (required):
 - Rebuild canonical object in this exact top-level order:
   `app_name`, `app_description`, `platform`, `mode`, `traceability_tier`, `user_roles`, `goals`, `assumptions`, `out_of_scope`, `non_functional_requirements`, `extra_data`, `global_experience`, `modules`, `traceability`, `traceability_coverage`, `open_questions`, `technical_parking_lot`, `spikes_required`.
 - Source mapping:
-  - `_meta.json` → app-level fields (`app_name` through `extra_data`)
-  - `global_experience.json` → `global_experience`
-  - `assumptions.json` → `assumptions`
-  - `out_of_scope.json` → `out_of_scope`
-  - `open_questions.json` → `open_questions`
-  - `technical_parking_lot.json` → `technical_parking_lot`
-  - `modules/*.json` (sorted by `module_id`) → `modules`
-  - `traceability/links.json` → `traceability`
-  - `traceability/coverage.json` → `traceability_coverage`
-  - `spikes_required.json` → `spikes_required`
+  - `analysis_output/_meta.json` (or `<prd_bundle_path>/_meta.json`) → app-level fields (`app_name` through `extra_data`)
+  - `analysis_output/global_experience.json` (or `<prd_bundle_path>/global_experience.json`) → `global_experience`
+  - `analysis_output/assumptions.json` (or `<prd_bundle_path>/assumptions.json`) → `assumptions`
+  - `analysis_output/out_of_scope.json` (or `<prd_bundle_path>/out_of_scope.json`) → `out_of_scope`
+  - `analysis_output/open_questions.json` (or `<prd_bundle_path>/open_questions.json`) → `open_questions`
+  - `analysis_output/technical_parking_lot.json` (or `<prd_bundle_path>/technical_parking_lot.json`) → `technical_parking_lot`
+  - `analysis_output/modules/*.json` (or `<prd_bundle_path>/modules/*.json`) sorted by `module_id` → `modules`
+  - `analysis_output/traceability/links.json` (or `<prd_bundle_path>/traceability/links.json`) → `traceability`
+  - `analysis_output/traceability/coverage.json` (or `<prd_bundle_path>/traceability/coverage.json`) → `traceability_coverage`
+  - `analysis_output/spikes_required.json` (or `<prd_bundle_path>/spikes_required.json`) → `spikes_required`
 - If required bundle files are missing, return `INPUT_VALIDATION_FAILED` with exact missing file names in `missing_fields`.
 
 ---

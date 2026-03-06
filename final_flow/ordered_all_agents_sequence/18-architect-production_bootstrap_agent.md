@@ -22,8 +22,10 @@ Extract production-critical initial system data required for application bootstr
 
 ## Inputs
 - All `contract_output/modules/{moduleId}/openapi.json` files
-- `architect_output/global_flow.json` (if exists)
 - All `architect_output/modules/{moduleId}/be_policy_flow.json` files
+
+Optional context (use only when already available from reconcile stage):
+`architect_output/global_flow.json`
 
 ## Output
 - `architect_output/production_bootstrap.json`

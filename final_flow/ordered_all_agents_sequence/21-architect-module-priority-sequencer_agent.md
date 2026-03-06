@@ -17,7 +17,7 @@ Read architect and contract outputs, identify which modules are foundational/cor
 
 ## Output (required)
 - `architect_output/module_priority_sequence.json`
-- Must validate against: `new-plan/final_flow/ordered_all_agents_sequence/schemas/23-architect-module-priority-sequencer_agent.schema.json`
+- Must validate against: `schemas/21-architect-module-priority-sequencer_agent.schema.json`
 
 ## Determinism Rules (mandatory)
 1. Never use random values.

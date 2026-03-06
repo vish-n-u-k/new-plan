@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "architect/module_flow.schema.json",
+  "$id": "architect/reconcile_module_flow.schema.json",
   "type": "object",
   "required": ["moduleId", "summary", "flows"],
   "properties": {

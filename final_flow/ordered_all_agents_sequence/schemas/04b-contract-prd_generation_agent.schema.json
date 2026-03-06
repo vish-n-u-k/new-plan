@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "validation_report.schema.json",
+  "$id": "contract_prd_generation_output.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": ["moduleId", "contractVersion", "passed", "errors", "warnings", "generatedAt"],

@@ -1,20 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "architect/gaps_questions.schema.json",
+  "$id": "architect/decision_pack_conflicts_questions.schema.json",
   "type": "object",
-  "required": ["version", "questions"],
+  "required": ["version", "conflicts"],
   "properties": {
     "version": { "type": "string" },
-    "questions": {
+    "conflicts": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["questionId", "title", "description", "impact", "options", "recommendedOptionId", "allowCustomOption"],
+        "required": ["conflictId", "topic", "description", "sourcesInConflict", "options", "recommendedOptionId", "recommendedSource", "allowCustomOption"],
         "properties": {
-          "questionId": { "type": "string" },
-          "title": { "type": "string" },
+          "conflictId": { "type": "string" },
+          "topic": { "type": "string" },
           "description": { "type": "string" },
-          "impact": { "type": "string", "enum": ["low", "medium", "high"] },
+          "sourcesInConflict": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["openapi", "fe_details", "prisma_contract"] }
+          },
           "options": {
             "type": "array",
             "minItems": 2,
@@ -24,7 +27,7 @@
               "properties": {
                 "optionId": { "type": "string" },
                 "label": { "type": "string" },
-                "source": { "type": "string", "enum": ["openapi", "fe_details", "prisma_contract", "inferred", "custom"] },
+                "source": { "type": "string", "enum": ["openapi", "fe_details", "prisma_contract", "custom"] },
                 "resolutionEffect": { "type": "string" },
                 "pros": { "type": "array", "items": { "type": "string" } },
                 "cons": { "type": "array", "items": { "type": "string" } },
@@ -34,6 +37,7 @@
             }
           },
           "recommendedOptionId": { "type": "string" },
+          "recommendedSource": { "type": "string", "const": "openapi" },
           "allowCustomOption": { "type": "boolean", "const": true }
         }
       }

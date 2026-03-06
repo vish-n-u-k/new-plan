@@ -19,7 +19,7 @@ You are the Global Environment Configuration Agent.
 Generate a comprehensive environment configuration schema with all required and optional environment variables across all modules and integrations.
 
 ## Inputs
-- `architect_output/global_integrations_catalog.json`
+- `architect_output/global_integrations.json`
 - `architect_output/global_security_policies.json`
 - All `contract_output/modules/{moduleId}/prisma_contract.json` files
 - All `contract_output/modules/{moduleId}/openapi.json` files
@@ -124,7 +124,7 @@ Specify which vars change per environment:
         "variesByEnvironment": true,
         "confidence": "high",
         "evidenceRefs": [
-          "global_integrations_catalog://github_oauth/requiredConfig"
+          "global_integrations://github_oauth/requiredConfig"
         ]
       },
       "GITHUB_CLIENT_SECRET": {
@@ -135,7 +135,7 @@ Specify which vars change per environment:
         "variesByEnvironment": true,
         "confidence": "high",
         "evidenceRefs": [
-          "global_integrations_catalog://github_oauth/requiredConfig"
+          "global_integrations://github_oauth/requiredConfig"
         ]
       },
       "GITHUB_CALLBACK_URL": {
@@ -147,7 +147,7 @@ Specify which vars change per environment:
         "variesByEnvironment": true,
         "confidence": "high",
         "evidenceRefs": [
-          "global_integrations_catalog://github_oauth/requiredConfig"
+          "global_integrations://github_oauth/requiredConfig"
         ]
       }
     },
@@ -160,7 +160,7 @@ Specify which vars change per environment:
         "variesByEnvironment": true,
         "confidence": "high",
         "evidenceRefs": [
-          "global_integrations_catalog://github_api/requiredConfig"
+          "global_integrations://github_api/requiredConfig"
         ]
       },
       "GITHUB_APP_PRIVATE_KEY": {
@@ -172,7 +172,7 @@ Specify which vars change per environment:
         "variesByEnvironment": true,
         "confidence": "high",
         "evidenceRefs": [
-          "global_integrations_catalog://github_api/requiredConfig"
+          "global_integrations://github_api/requiredConfig"
         ]
       },
       "EMAIL_PROVIDER": {
@@ -184,7 +184,7 @@ Specify which vars change per environment:
         "variesByEnvironment": false,
         "confidence": "medium",
         "evidenceRefs": [
-          "global_integrations_catalog://email_service/requiredConfig"
+          "global_integrations://email_service/requiredConfig"
         ]
       },
       "EMAIL_API_KEY": {
@@ -196,7 +196,7 @@ Specify which vars change per environment:
         "variesByEnvironment": true,
         "confidence": "medium",
         "evidenceRefs": [
-          "global_integrations_catalog://email_service/requiredConfig"
+          "global_integrations://email_service/requiredConfig"
         ]
       },
       "FROM_EMAIL": {
@@ -209,7 +209,7 @@ Specify which vars change per environment:
         "variesByEnvironment": true,
         "confidence": "medium",
         "evidenceRefs": [
-          "global_integrations_catalog://email_service/requiredConfig"
+          "global_integrations://email_service/requiredConfig"
         ]
       }
     },
@@ -277,7 +277,7 @@ Specify which vars change per environment:
 - Sensitive vars must be marked `sensitive: true`
 - Vars that change per environment must be marked `variesByEnvironment: true`
 - Required vars must be listed in `validation.requiredInProduction`
-- All integration env vars must trace back to `global_integrations_catalog.json`
+- All integration env vars must trace back to `global_integrations.json`
 - Conditional vars must specify `conditionalOn`
 
 ## Edge Cases

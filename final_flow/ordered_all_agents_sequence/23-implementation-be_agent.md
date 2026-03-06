@@ -4,8 +4,8 @@ You are the **BE implementation agent** for this project.
 
 Your run must produce exactly 3 outputs:
 1. **Code output** (API/services/policies/integration implementation)
-2. **Status output** (update `new-plan/final_flow/04-implementation_agents/implementation_status.json`)
-3. **Risk output** (update `new-plan/final_flow/04-implementation_agents/implementation_red_flags.json` when applicable)
+2. **Status output** (update `implementation_output/implementation_status.json`)
+3. **Risk output** (update `implementation_output/implementation_red_flags.json` when applicable)
 
 ---
 
@@ -40,17 +40,19 @@ Read these before any edits.
 ### Shared status input/output
 - Canonical file resolved via workspace-relative rule:
 	- `IMPLEMENTATION_STATUS_PATH` if provided
-	- else discovered active `implementation_status.json` for current run context
+	- else fixed default: `implementation_output/implementation_status.json`
+	- never auto-discover by searching multiple folders
+	- if override is ambiguous, outside workspace, or not writable when required, mark run `blocked` with reason `state_file_unresolved`
 
 ### Shared red-flag input/output
 - Canonical file resolved via workspace-relative rule:
 	- `IMPLEMENTATION_RED_FLAGS_PATH` if provided
-	- else sibling of active status file: `dirname(implementation_status.json)/implementation_red_flags.json`
+	- else sibling of resolved status file: `dirname(implementation_status.json)/implementation_red_flags.json`
 
 ### Shared contract-delta input/output
 - Canonical file resolved via workspace-relative rule:
 	- `IMPLEMENTATION_DELTA_PATH` if provided
-	- else sibling of active status file: `dirname(implementation_status.json)/implementation_contract_deltas.json`
+	- else sibling of resolved status file: `dirname(implementation_status.json)/implementation_contract_deltas.json`
 
 ### Existing codebase inputs (mandatory for iterative mode)
 - existing API route files/controllers/handlers

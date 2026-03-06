@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/production_bootstrap.schema.json",
+  "type": "object",
+  "required": ["systemRoles", "systemPermissions", "rolePermissionMatrix", "superAdminUser"],
+  "properties": {
+    "systemRoles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "confidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "evidenceRefs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "systemPermissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "category": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "rolePermissionMatrix": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["permissions"],
+        "properties": {
+          "permissions": { "type": "array", "items": { "type": "string" } },
+          "inheritsFrom": { "type": ["string", "null"] },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "superAdminUser": {
+      "type": "object",
+      "required": ["email", "role", "mustChangePassword"],
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "mustChangePassword": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "systemDefaults": { "type": "object", "additionalProperties": true },
+    "unknowns": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false
+}
