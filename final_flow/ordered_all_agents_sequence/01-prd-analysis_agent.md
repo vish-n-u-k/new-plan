@@ -61,7 +61,7 @@ Follow these phases in order.
 Use this sequence only when `operation_intent = delta_update_existing`:
 
 1. **Load Bundle Context**
-  - Read `index.json`, `_meta.json`, `assumptions.json`, `open_questions.json`, `traceability/links.json`, `traceability/coverage.json`, and all module files.
+  - Read `index.json`, `_meta.json`, `global_experience.json`, `assumptions.json`, `open_questions.json`, `traceability/links.json`, `traceability/coverage.json`, `spikes_required.json`, and all module files.
 2. **Preflight Integrity Check**
   - Validate JSON syntax for every JSON file.
   - Repair syntax-only issues first.
@@ -69,7 +69,7 @@ Use this sequence only when `operation_intent = delta_update_existing`:
 3. **Gap Matrix Build**
   - Compare bundle against current required contract.
   - Tag each gap as `blocking | high | medium`.
-  - Prioritize: `global_experience.json` missing, global decision traceability missing, approval state missing, count mismatch.
+  - Prioritize: `global_experience.json` missing, `spikes_required.json` missing, global decision traceability missing, approval state missing, count mismatch.
 4. **Minimal Question Pass**
   - Ask only questions needed to close `blocking|high` gaps.
   - Maximum 5 questions total.
@@ -84,6 +84,7 @@ Use this sequence only when `operation_intent = delta_update_existing`:
   - Recompute and align `index.json.counts` with `traceability/coverage.json`.
   - Ensure `traceability/links.json` includes `target_type: global_decision` links.
   - Ensure `global_experience.json.confirmation_status` matches assumptions/open questions state.
+  - Ensure `spikes_required.json` is present, deduplicated, and `index.json.counts.spikes_required` matches file total.
 8. **Delta Validation + Summary**
   - Run validation checklist.
   - Summarize only what changed, what is still assumed, and any pending confirmations.
@@ -294,18 +295,6 @@ Before generating JSON, confirm:
 - Out-of-scope items are documented
 - Global navigation/layout/handoff decisions are captured and confirmed (or clearly marked as pending assumptions)
 
-Before finalizing output, ask one final preference question:
-- **"Do you have any preferred tech stack, frameworks, tools, or platform constraints we should keep in mind for later stages?"**
-
-In `delta_update_existing`, ask this only if missing in existing output or if user explicitly wants to revise it.
-
-Capture this in `extra_data`:
-- stack/framework/tool preferences → `extra_data.library_preferences`
-- platform or policy constraints → `extra_data.constraints`
-- global experience preferences → `extra_data.global_experience_preferences`
-- cross-module business handoffs → `extra_data.cross_module_handoffs`
-- layman-facing summary text → `extra_data.layman_summary`
-- any other notes → `extra_data.notes`
 
 Then save final output as a modular bundle in `analysis_output/`.
 
@@ -345,6 +334,7 @@ Required structure:
 - `analysis_output/assumptions.json` — assumptions array
 - `analysis_output/out_of_scope.json` — out-of-scope array
 - `analysis_output/technical_parking_lot.json` — parked technical suggestions for future analysis
+- `analysis_output/spikes_required.json` — merged or discovered spikes/POCs required before implementation
 
 Delta-update required behavior:
 - If a required file is missing, create it.
@@ -359,7 +349,7 @@ Deterministic per-file contract (required):
   - `traceability_tier`
   - `files` (absolute list of bundle-relative file paths written)
   - `module_ids` (ordered)
-  - `counts` (`goals`, `modules`, `features`, `requirements`, `business_rules`, `global_decisions`, `cross_module_handoffs`, `assumptions`, `open_questions`, `out_of_scope`, `technical_parking_lot`)
+  - `counts` (`goals`, `modules`, `features`, `requirements`, `business_rules`, `global_decisions`, `cross_module_handoffs`, `assumptions`, `open_questions`, `out_of_scope`, `technical_parking_lot`, `spikes_required`)
   - `operation_intent` (`fresh_generate | delta_update_existing`)
   - `migration` (object with `applied`, `repaired_files`, `created_files`, `updated_files`)
 - `analysis_output/_meta.json`:
@@ -397,6 +387,8 @@ Deterministic per-file contract (required):
   - Array of strings
 - `analysis_output/technical_parking_lot.json`:
   - Array of canonical `technical_parking_lot[]` objects
+- `analysis_output/spikes_required.json`:
+  - Array of canonical `spikes_required[]` objects
 
 Optional compatibility artifact (only when explicitly requested):
 
@@ -487,9 +479,12 @@ If implementation detail pressure appears in source input or user prompts:
 - Keep summaries plain-language and non-technical even when internal output is structured JSON.
 - For user-facing summary payloads, always separate confirmed items from assumptions pending confirmation.
 - Every requirement and rule must have acceptance criteria.
+- Maintain a deterministic spike lifecycle: capture spikes from source uncertainty/high-risk assumptions, deduplicate by normalized `title + reason`, and persist them only in `spikes_required.json` with stable `spike_id`.
+- Use typed ID keys for every canonical object (for example `goal_id`, `module_id`, `screen_id`, `feature_id`, `req_id`, `rule_id`, `decision_id`, `handoff_id`, `assumption_id`, `question_id`, `trace_id`, `spike_id`).
+- Do not emit generic `id` for canonical objects in fresh outputs.
+- In `delta_update_existing`, if legacy generic `id` exists, preserve it only for backward compatibility and also emit the typed ID key as the canonical source of truth.
 - Every major output item must have traceability to source input.
 - Preserve all extra user context in `extra_data`.
-- Always ask and capture final tech/framework/tool preferences only as product constraints for downstream planning.
 - Do not include implementation design details (API/schema/code architecture).
 - If scope is too broad, define MVP boundary first, then expand.
 - Always output valid JSON (no comments, no trailing commas).
@@ -535,6 +530,7 @@ Coverage and source-quality operational rules:
 - `traceability_coverage` is present and internally consistent.
 - `index.json.counts` and `traceability/coverage.json` totals are internally consistent after delta patch.
 - Enum values are normalized consistently across the file.
+- Typed ID keys are present and generic `id` is not used as the canonical identifier key.
 - Every high-risk assumption has `isolation_recommended: true` and a non-empty `isolation_note`.
 - Every technical suggestion is either represented in BRD-level constraints or recorded in `technical_parking_lot`.
 - User-facing summary is understandable to a non-technical person and clearly separates confirmed items from assumptions.

@@ -40,6 +40,7 @@ If metadata is missing, do not guess. Mark it as unknown in the report.
 If `prd_bundle_path` is provided, load and merge:
 - `index.json`
 - `_meta.json`
+- `global_experience.json`
 - `assumptions.json`
 - `out_of_scope.json`
 - `open_questions.json`
@@ -47,14 +48,16 @@ If `prd_bundle_path` is provided, load and merge:
 - `traceability/links.json`
 - `traceability/coverage.json`
 - all files under `modules/*.json`
+- `spikes_required.json`
 
 Then review the reconstructed canonical PRD object.
 
 Canonical reconstruction rules (required):
 - Rebuild canonical object in this exact top-level order:
-  `app_name`, `app_description`, `platform`, `mode`, `traceability_tier`, `user_roles`, `goals`, `assumptions`, `out_of_scope`, `non_functional_requirements`, `extra_data`, `modules`, `traceability`, `traceability_coverage`, `open_questions`, `technical_parking_lot`.
+  `app_name`, `app_description`, `platform`, `mode`, `traceability_tier`, `user_roles`, `goals`, `assumptions`, `out_of_scope`, `non_functional_requirements`, `extra_data`, `global_experience`, `modules`, `traceability`, `traceability_coverage`, `open_questions`, `technical_parking_lot`, `spikes_required`.
 - Source mapping:
   - `_meta.json` → app-level fields (`app_name` through `extra_data`)
+  - `global_experience.json` → `global_experience`
   - `assumptions.json` → `assumptions`
   - `out_of_scope.json` → `out_of_scope`
   - `open_questions.json` → `open_questions`
@@ -62,18 +65,25 @@ Canonical reconstruction rules (required):
   - `modules/*.json` (sorted by `module_id`) → `modules`
   - `traceability/links.json` → `traceability`
   - `traceability/coverage.json` → `traceability_coverage`
+  - `spikes_required.json` → `spikes_required`
 - If required bundle files are missing, return `INPUT_VALIDATION_FAILED` with exact missing file names in `missing_fields`.
 
 ---
+
 
 ## Review Lens (Be Skeptical)
 
 Evaluate the PRD against these dimensions:
 
+9. **Technical Spikes / POCs Needed**
+  - Identify any areas where a technical spike or proof-of-concept (POC) is required before development can proceed safely (e.g., new technology, integration uncertainty, high-risk requirements).
+  - If such needs are found, include them in the review report with a clear recommendation and suggested next step.
+
 1. **Schema Integrity**
    - Required fields present
    - Enum consistency
    - ID consistency and uniqueness
+  - Typed ID key enforcement (for example `goal_id`, `module_id`, `screen_id`, `feature_id`, `req_id`, `rule_id`, `decision_id`, `handoff_id`, `assumption_id`, `question_id`, `trace_id`, `spike_id`) and generic `id` not used as canonical key
 2. **Requirement Quality**
    - Specific, testable, non-vague
    - Acceptance criteria are measurable
@@ -137,6 +147,7 @@ Dimension formulas:
 
 ---
 
+
 ## Output Format
 
 Save as `review_output.json`.
@@ -185,7 +196,7 @@ Save as `review_output.json`.
       "description": "string",
       "evidence": {
         "target_id": "string",
-        "target_type": "goal | module | feature | requirement | business_rule | assumption | nfr | traceability",
+        "target_type": "goal | module | screen | feature | requirement | business_rule | assumption | nfr | global_decision | spike | traceability",
         "json_path": "string"
       },
       "impact": "string",
@@ -222,6 +233,15 @@ Save as `review_output.json`.
       "expected_outcome": "string"
     }
   ],
+  "spikes_required": [
+    {
+      "spike_id": "SPK-001",
+      "title": "string",
+      "reason": "string",
+      "suggested_owner": "string",
+      "expected_outcome": "string"
+    }
+  ],
   "next_step_recommendation": {
     "decision": "proceed_next_phase | auto_review_cycle | manual_human_review",
     "reason": "string",
@@ -232,7 +252,10 @@ Save as `review_output.json`.
 
 ---
 
+
 ## Rules
+
+- Always check for any technical spikes or proof-of-concept (POC) work that should be completed before development begins. If found, add them to the `spikes_required` array in the output, with a clear title, reason, suggested owner (if possible), and expected outcome.
 
 - Be critical, unbiased, and evidence-driven.
 - Output must strictly follow the Output Envelope rules (raw JSON only, no surrounding text).
@@ -256,4 +279,5 @@ Determinism and normalization rules:
   - requirement/business-rule priority: `must|should|could` → `required|important|optional`
   - assumption status: `validated|accepted` → `confirmed`
 - Do not invent normalized values outside canonical enums; if ambiguous, keep original and emit a `high` `schema` finding.
+- If canonical objects use generic `id` without the typed key, emit a `high` `schema` finding and include affected paths in `coverage_checks.id_collisions`.
 - `evidence.json_path` must use JSONPath-like notation rooted at `$` (example: `$.modules[1].screens[0].requirements[0]`).

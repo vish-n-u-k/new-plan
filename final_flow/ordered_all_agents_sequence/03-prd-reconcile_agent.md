@@ -19,9 +19,12 @@ Your job is to merge one base PRD and one or more review reports (possibly from 
 
 ## Input Contract
 
+
 Required:
 - `base_prd_bundle_path` (preferred, e.g. `analysis_output/`) or `base_prd_json` (legacy fallback)
 - `review_reports[]` (one or more `review_output.json` objects)
+
+**Note:** Each review report may include a `spikes_required` array listing technical spikes or POCs needed before development. These must be merged and included in the reconciled output and reconciliation log.
 
 Optional:
 - `source_inputs` (BRD/user inputs)
@@ -49,14 +52,16 @@ Default reconciliation policy:
 2. Normalize all findings into one queue.
 3. Deduplicate semantically equivalent findings.
 4. Resolve conflicts using policy.
-5. Apply accepted fixes to PRD.
-6. Recompute coverage/consistency checks.
-7. Produce final PRD + detailed reconciliation log.
+5. Merge and deduplicate `spikes_required` from all review reports.
+6. Apply accepted fixes to PRD.
+7. Recompute coverage/consistency checks.
+8. Produce final PRD + detailed reconciliation log.
 
 Canonical reconstruction + ordering (required):
 - Reconstruct canonical PRD from bundle inputs before applying changes.
 - Top-level key order must be:
-  `app_name`, `app_description`, `platform`, `mode`, `traceability_tier`, `user_roles`, `goals`, `assumptions`, `out_of_scope`, `non_functional_requirements`, `extra_data`, `modules`, `traceability`, `traceability_coverage`, `open_questions`, `technical_parking_lot`.
+  `app_name`, `app_description`, `platform`, `mode`, `traceability_tier`, `user_roles`, `goals`, `assumptions`, `out_of_scope`, `non_functional_requirements`, `extra_data`, `global_experience`, `modules`, `traceability`, `traceability_coverage`, `open_questions`, `technical_parking_lot`, `spikes_required`.
+- If `spikes_required` is not present in base inputs, initialize it as an empty array (`[]`) before merge.
 - Sort merge processing deterministically by: finding severity desc (`critical`→`low`), confidence desc (`high`→`low`), then lexical `finding_id`.
 - Preserve existing IDs unless a new item is required; new IDs must follow existing prefixes and next available integer.
 
@@ -68,6 +73,7 @@ After each reconciliation pass:
 
 1. If there are no `critical`/`high` findings and quality gates pass:
   - Recommend: **Proceed to next phase**.
+  - If `spikes_required` is non-empty, recommend running **Spike Validation Agent** before contract/architecture phases.
 2. If findings remain:
   - Ask for decision:
     - **Auto review cycle** (default max 3, configurable), or
@@ -81,6 +87,13 @@ After each reconciliation pass:
 Non-interactive fallback:
 - If no user decision is available, default to `auto_review_cycle` until limit.
 - If limit reached with unresolved `critical`/`high`, set `next_step.decision` to `manual_human_review`.
+- If quality gates pass and `spikes_required` is non-empty, set `next_step.decision` to `proceed_next_phase` with reason explicitly instructing Spike Validation Agent execution first.
+
+Write confirmation behavior (deterministic):
+- In interactive/manual mode, before writing `analysis_output.reconciled/`, present a short Reconcile Change Summary (max 5 bullets) and ask exactly:
+  **"Question: Should I apply these reconciled changes now?"**
+- Write only after explicit approval (`yes`, `approved`, or equivalent).
+- In non-interactive mode, writes are allowed per fallback policy and must be recorded in `reconciliation_summary` context.
 
 ---
 
@@ -110,6 +123,7 @@ Save as a modular bundle in `analysis_output.reconciled/`.
 - Keep the same PRD schema as generator output, but persist as split files:
   - `analysis_output.reconciled/index.json`
   - `analysis_output.reconciled/_meta.json`
+  - `analysis_output.reconciled/global_experience.json`
   - `analysis_output.reconciled/assumptions.json`
   - `analysis_output.reconciled/out_of_scope.json`
   - `analysis_output.reconciled/open_questions.json`
@@ -117,11 +131,13 @@ Save as a modular bundle in `analysis_output.reconciled/`.
   - `analysis_output.reconciled/modules/{module_id}.json`
   - `analysis_output.reconciled/traceability/links.json`
   - `analysis_output.reconciled/traceability/coverage.json`
+  - `analysis_output.reconciled/spikes_required.json`
 - Preserve IDs when possible.
 - If new IDs are added, follow existing ID patterns.
 
 Split-file mapping contract (required):
 - `_meta.json`: `app_name`, `app_description`, `platform`, `mode`, `traceability_tier`, `user_roles`, `goals`, `non_functional_requirements`, `extra_data`.
+- `global_experience.json`: canonical `global_experience` object including `navigation_model`, `layout_model`, `cross_module_handoffs`, `continuity_rules`, `global_business_rules`, `decision_register`, `layman_summary`, `confirmation_status`.
 - `assumptions.json`: canonical `assumptions[]`.
 - `out_of_scope.json`: canonical `out_of_scope[]`.
 - `open_questions.json`: canonical `open_questions[]`.
@@ -129,13 +145,18 @@ Split-file mapping contract (required):
 - `modules/{module_id}.json`: one canonical module object per file.
 - `traceability/links.json`: canonical `traceability[]`.
 - `traceability/coverage.json`: canonical `traceability_coverage`.
-- `index.json` must include: `version`, `generated_at`, `traceability_tier`, `files`, `module_ids`, `counts`.
+- `spikes_required.json`: canonical `spikes_required[]`.
+- `index.json` must include: `version`, `generated_at`, `traceability_tier`, `files`, `module_ids`, `counts`, `operation_intent`, `migration`.
 
 ---
+
 
 ## Output 2: Reconciliation Log
 
 Save as `reconcile_output.json`.
+
+### Spikes Required Log
+- The reconciliation log **must** include a section summarizing all spikes merged, with source review report references and any reconciliation decisions (accepted, merged, deferred, or rejected), including rationale.
 
 ```json
 {
@@ -200,11 +221,24 @@ Save as `reconcile_output.json`.
       "suggested_phase": "architecture | fe | be | db | security | devops",
       "handoff_note": "string"
     }
+  ],
+  "spikes_required": [
+    {
+      "spike_id": "SPK-001",
+      "source_review_report_ids": ["review_output_1"],
+      "source_finding_ids": ["RV-001"],
+      "title": "string",
+      "reason": "string",
+      "suggested_owner": "string",
+      "expected_outcome": "string",
+      "decision": "accepted | merged | deferred | rejected"
+    }
   ]
 }
 ```
 
 ---
+
 
 ## Rules
 
@@ -222,6 +256,7 @@ Save as `reconcile_output.json`.
 - Use human-like branching language for next steps; avoid exposing rigid internal loop mechanics.
 - Default auto review cycle limit is 3 unless user config overrides it.
 - Never auto-loop indefinitely.
+- **Always merge, deduplicate, and include all required spikes from review reports in the reconciled PRD and reconciliation log.**
 
 Determinism and normalization rules:
 - Normalize enum drift before applying fixes and log each correction in `decisions` reason text.
@@ -229,4 +264,15 @@ Determinism and normalization rules:
   - priority: `P0|P1|P2|P3` → `critical|high|medium|low`
   - requirement/business-rule priority: `must|should|could` → `required|important|optional`
   - assumption status: `validated|accepted` → `confirmed`
+- Use typed ID keys for every canonical object (for example `goal_id`, `module_id`, `screen_id`, `feature_id`, `req_id`, `rule_id`, `decision_id`, `handoff_id`, `assumption_id`, `question_id`, `trace_id`, `spike_id`).
+- Do not emit generic `id` for canonical objects in reconciled outputs.
+- If legacy generic `id` is found in base inputs, preserve it only for backward compatibility and emit the typed ID key as canonical.
 - Never reduce `traceability_coverage.overall_percent` unless a decision entry explicitly justifies the change and includes affected target IDs.
+- Preserve backward compatibility mirror behavior for global experience in `_meta.extra_data` when present; `global_experience.json` remains source of truth.
+
+Post-merge quality gates (must pass before final write):
+- `global_experience.json` exists and required sections are present.
+- `spikes_required.json` exists, is deduplicated, and IDs are stable.
+- Typed ID keys are present for canonical objects; generic `id` is not canonical.
+- `index.json.counts` aligns with merged file totals, including `spikes_required`.
+- Traceability includes required `target_type: global_decision` links with no orphan targets.

@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "description": "Shared cross-agent red-flag register for assumptions, bypasses, conflicts, tech debt, optimization needs, and security/operational risks.",
+    "lastUpdatedUtc": null,
+    "idPattern": "RF-0001",
+    "severityLevels": [
+      "low",
+      "medium",
+      "high",
+      "critical"
+    ],
+    "types": [
+      "assumption",
+      "critical_bypass",
+      "standards_conflict",
+      "tech_debt",
+      "optimization_required",
+      "security_concern",
+      "data_integrity_risk",
+      "performance_risk",
+      "operational_risk"
+    ],
+    "statusValues": [
+      "open",
+      "accepted",
+      "mitigated",
+      "deferred",
+      "blocked",
+      "resolved"
+    ],
+    "phaseValues": [
+      "global_foundation",
+      "module_implementation",
+      "testing"
+    ],
+    "agentValues": [
+      "db",
+      "be",
+      "fe"
+    ]
+  },
+  "items": []
+}

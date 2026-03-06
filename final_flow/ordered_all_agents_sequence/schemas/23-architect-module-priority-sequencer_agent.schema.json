@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "module_priority_sequence.schema.json",
+  "title": "Module Priority Sequence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "generatedAt",
+    "sourceSummary",
+    "rulesApplied",
+    "dependencyGraph",
+    "moduleAnalysis",
+    "coreModules",
+    "independentModules",
+    "buildLayers",
+    "buildSequenceFlat",
+    "cycleBreaks",
+    "assumptions"
+  ],
+  "properties": {
+    "version": { "type": "string" },
+    "generatedAt": { "type": "string" },
+    "sourceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["totalModules", "inputFilesRead"],
+      "properties": {
+        "totalModules": { "type": "integer", "minimum": 0 },
+        "inputFilesRead": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "rulesApplied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dependencySignals",
+        "coreScoreFormula",
+        "priorityScoreFormula",
+        "sortingPolicy"
+      ],
+      "properties": {
+        "dependencySignals": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "coreScoreFormula": { "type": "string" },
+        "priorityScoreFormula": { "type": "string" },
+        "sortingPolicy": { "type": "string" }
+      }
+    },
+    "dependencyGraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["edges"],
+      "properties": {
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to", "reasonType", "evidenceRef"],
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "reasonType": {
+                "type": "string",
+                "enum": [
+                  "global_screen_transition",
+                  "contract_cross_module_edge",
+                  "soft_navigation_dependency"
+                ]
+              },
+              "evidenceRef": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "moduleAnalysis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "moduleId",
+          "inDegree",
+          "outDegree",
+          "screens",
+          "endpoints",
+          "dbModels",
+          "webhooks",
+          "scheduledJobs",
+          "sharedModelCount",
+          "integrationCount",
+          "complexityLevel",
+          "coreScore",
+          "priorityScore",
+          "classification",
+          "confidence",
+          "evidenceRefs"
+        ],
+        "properties": {
+          "moduleId": { "type": "string" },
+          "inDegree": { "type": "integer", "minimum": 0 },
+          "outDegree": { "type": "integer", "minimum": 0 },
+          "screens": { "type": "integer", "minimum": 0 },
+          "endpoints": { "type": "integer", "minimum": 0 },
+          "dbModels": { "type": "integer", "minimum": 0 },
+          "webhooks": { "type": "integer", "minimum": 0 },
+          "scheduledJobs": { "type": "integer", "minimum": 0 },
+          "sharedModelCount": { "type": "integer", "minimum": 0 },
+          "integrationCount": { "type": "integer", "minimum": 0 },
+          "complexityLevel": {
+            "type": "string",
+            "enum": ["high", "medium", "low", "unknown"]
+          },
+          "coreScore": { "type": "integer" },
+          "priorityScore": { "type": "integer" },
+          "classification": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["core", "independent", "leaf"]
+            }
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "coreModules": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "independentModules": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "buildLayers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["layer", "modules"],
+        "properties": {
+          "layer": { "type": "integer", "minimum": 1 },
+          "modules": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "buildSequenceFlat": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "cycleBreaks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["atLayer", "selectedModule", "reason"],
+        "properties": {
+          "atLayer": { "type": "integer", "minimum": 1 },
+          "selectedModule": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
