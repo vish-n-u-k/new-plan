@@ -1,0 +1,23 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Node
+node_modules/
+package-lock.json
+
+# TypeScript
+*.tsbuildinfo
+
+# Claude
+.claude/
+
+# Next.js
+.next/
+out/
+
+oldbck/
