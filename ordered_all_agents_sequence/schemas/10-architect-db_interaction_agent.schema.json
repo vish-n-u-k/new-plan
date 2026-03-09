@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/db_flow.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["moduleId", "endpoints"],
+  "properties": {
+    "moduleId": { "type": "string" },
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["operationId", "dbOperations"],
+        "properties": {
+          "operationId": { "type": "string" },
+          "dbOperations": { "type": "array" },
+          "sideEffects": { "type": "array" },
+          "criticality": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

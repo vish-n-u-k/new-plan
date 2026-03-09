@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "orchestration/audit.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "runMeta",
+    "sequence",
+    "steps",
+    "current",
+    "resume",
+    "validation",
+    "repairs",
+    "summary"
+  ],
+  "properties": {
+    "runMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runId", "rootPath", "mode"],
+      "properties": {
+        "runId": { "type": "string" },
+        "rootPath": { "type": "string" },
+        "mode": { "type": "string", "enum": ["full", "resume", "targeted", "dry_run"] }
+      }
+    },
+    "sequence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stepId", "agentFile", "required", "jsonDriven"],
+        "properties": {
+          "stepId": { "type": "string" },
+          "agentFile": { "type": "string" },
+          "required": { "type": "boolean" },
+          "jsonDriven": { "type": "boolean" }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stepId", "status", "attempts", "schemaMapped", "outputPath"],
+        "properties": {
+          "stepId": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "skipped_optional",
+              "failed_validation",
+              "blocked_schema_missing",
+              "needs_user_input"
+            ]
+          },
+          "attempts": { "type": "integer", "minimum": 0, "maximum": 3 },
+          "schemaMapped": { "type": ["string", "null"] },
+          "outputPath": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "current": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stepId", "status"],
+      "properties": {
+        "stepId": { "type": ["string", "null"] },
+        "status": { "type": "string" }
+      }
+    },
+    "resume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lastCompletedStepId", "nextStepId"],
+      "properties": {
+        "lastCompletedStepId": { "type": ["string", "null"] },
+        "nextStepId": { "type": ["string", "null"] }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["totalChecks", "passedChecks", "failedChecks"],
+      "properties": {
+        "totalChecks": { "type": "integer", "minimum": 0 },
+        "passedChecks": { "type": "integer", "minimum": 0 },
+        "failedChecks": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "repairs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stepId", "attempt", "result"],
+        "properties": {
+          "stepId": { "type": "string" },
+          "attempt": { "type": "integer", "minimum": 1, "maximum": 3 },
+          "result": { "type": "string", "enum": ["pass", "fail"] }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finalStatus", "completedSteps", "skippedSteps", "blockedSteps"],
+      "properties": {
+        "finalStatus": { "type": "string", "enum": ["running", "completed", "blocked"] },
+        "completedSteps": { "type": "integer", "minimum": 0 },
+        "skippedSteps": { "type": "integer", "minimum": 0 },
+        "blockedSteps": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

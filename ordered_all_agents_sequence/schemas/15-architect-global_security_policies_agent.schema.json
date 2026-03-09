@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/global_security_policies.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["authentication", "errorHandling", "rateLimiting"],
+  "properties": {
+    "authentication": { "type": ["object", "array"] },
+    "errorHandling": { "type": ["object", "array"] },
+    "rateLimiting": { "type": ["object", "array"] },
+    "cors": { "type": ["object", "array"] },
+    "securityHeaders": { "type": ["object", "array"] },
+    "auditLogging": { "type": ["object", "array"] },
+    "meta": { "type": "object" }
+  }
+}

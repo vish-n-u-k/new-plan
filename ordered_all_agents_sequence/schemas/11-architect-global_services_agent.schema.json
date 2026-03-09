@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/global_services_registry.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["services"],
+  "properties": {
+    "services": { "type": "array" },
+    "unresolvedServices": { "type": "array" },
+    "meta": { "type": "object" }
+  }
+}

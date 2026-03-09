@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/be_policy_flow.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["moduleId", "endpoints", "permissionMatrix", "policyGaps"],
+  "properties": {
+    "moduleId": { "type": "string" },
+    "endpoints": { "type": "array" },
+    "permissionMatrix": { "type": ["object", "array"] },
+    "policyGaps": { "type": "array" }
+  }
+}

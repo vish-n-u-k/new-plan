@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/global_navigation_or_sitemap.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["header"],
+      "properties": {
+        "header": { "type": ["object", "array"] },
+        "sidebar": { "type": ["object", "array"] },
+        "footer": { "type": ["object", "array"] },
+        "breadcrumbs": { "type": ["object", "array"] },
+        "mobile": { "type": ["object", "array"] }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["routes"],
+      "properties": {
+        "version": { "type": "string" },
+        "baseUrl": { "type": "string" },
+        "routes": { "type": "array" },
+        "redirects": { "type": "array" }
+      }
+    }
+  ]
+}

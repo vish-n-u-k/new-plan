@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/fe_flow.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["moduleId", "routeGraph", "screenGraph", "apiEdges", "unmappedActions"],
+  "properties": {
+    "moduleId": { "type": "string" },
+    "routeGraph": { "type": ["object", "array"] },
+    "screenGraph": { "type": ["object", "array"] },
+    "apiEdges": { "type": "array" },
+    "unmappedActions": { "type": "array" }
+  }
+}

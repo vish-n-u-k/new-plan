@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/normalize.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["moduleId", "routes", "endpoints", "rbac", "db", "signals", "unknowns", "evidence"],
+  "properties": {
+    "moduleId": { "type": "string" },
+    "routes": { "type": "array" },
+    "endpoints": { "type": "array" },
+    "rbac": { "type": ["object", "array"] },
+    "db": { "type": ["object", "array"] },
+    "signals": { "type": ["object", "array"] },
+    "unknowns": { "type": "array" },
+    "evidence": { "type": ["array", "object"] }
+  }
+}

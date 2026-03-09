@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/global_integrations.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["integrations"],
+  "properties": {
+    "integrations": { "type": "array" },
+    "unresolvedIntegrations": { "type": "array" },
+    "meta": { "type": "object" }
+  }
+}

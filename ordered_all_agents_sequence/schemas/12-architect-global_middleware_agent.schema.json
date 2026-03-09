@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/global_middleware_registry.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["middlewares", "endpointMiddlewareMap"],
+  "properties": {
+    "middlewares": { "type": "array" },
+    "endpointMiddlewareMap": { "type": "object" },
+    "unresolvedMiddleware": { "type": "array" },
+    "meta": { "type": "object" }
+  }
+}

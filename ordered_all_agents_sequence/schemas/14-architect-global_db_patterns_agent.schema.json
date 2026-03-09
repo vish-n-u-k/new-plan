@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "architect/global_db_patterns_or_enums.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["patterns"],
+      "properties": {
+        "patterns": { "type": "array" },
+        "conventions": { "type": "object" },
+        "meta": { "type": "object" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["enums"],
+      "properties": {
+        "enums": { "type": "array" },
+        "duplicateEnums": { "type": "array" },
+        "meta": { "type": "object" }
+      }
+    }
+  ]
+}
